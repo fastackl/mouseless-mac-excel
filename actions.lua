@@ -33,10 +33,24 @@ function M.sequence(steps)
   end
 end
 
-function M.menu(path)
+-- Invoke an Excel menu item by path. When `is_regex` is true each path
+-- component is treated as a Lua pattern, which is useful when a menu
+-- label varies across Excel versions (e.g. trailing "..." vs the
+-- single Unicode ellipsis "…"). Logs a message on failure so we can
+-- see what went wrong from /tmp/mouseless-mac-excel.log.
+function M.menu(path, is_regex)
   local app = hs.application.find(config.excel_bundle_id)
-  if not app then return false end
-  return app:selectMenuItem(path)
+  if not app then
+    if _G.__mme_log then _G.__mme_log("menu: Excel not found") end
+    return false
+  end
+  -- Hammerspoon's selectMenuItem rejects a literal nil for arg 2; it
+  -- requires a real boolean. Coerce to false when omitted.
+  local ok = app:selectMenuItem(path, is_regex == true)
+  if not ok and _G.__mme_log then
+    _G.__mme_log("menu not found: " .. table.concat(path, " > "))
+  end
+  return ok
 end
 
 ----------------------------------------------------------------------
@@ -94,5 +108,35 @@ end
 function M.paste_values()        M.paste_special("paste values")        end
 function M.paste_formats()       M.paste_special("paste formats")       end
 function M.paste_column_widths() M.paste_special("paste column widths") end
+
+----------------------------------------------------------------------
+-- Format menu actions
+----------------------------------------------------------------------
+
+-- Open Format > Column > Width... dialog so the user can type a
+-- numeric column width.
+--
+-- Same focus-routing artefact as the paste actions: when a dialog
+-- is opened programmatically, the text field doesn't reliably
+-- become the first responder before the user starts typing, so the
+-- first keystroke is lost. Curiously, sending Escape after the
+-- dialog appears does NOT cancel the dialog — instead it gets
+-- absorbed by the focus-routing machinery and has the side effect
+-- of settling focus on the text field. Same trick as paste_special.
+--
+-- The 50 ms timer gives the dialog a moment to render so the Escape
+-- arrives at the dialog rather than the worksheet behind it.
+function M.column_width_dialog()
+  M.applescript([[
+    tell application "System Events"
+      tell process "Microsoft Excel"
+        click menu item "Width..." of menu 1 of menu item "Column" of menu 1 of menu bar item "Format" of menu bar 1
+      end tell
+    end tell
+  ]])
+  hs.timer.doAfter(0.05, function()
+    hs.eventtap.keyStroke({}, "escape", 0)
+  end)
+end
 
 return M
