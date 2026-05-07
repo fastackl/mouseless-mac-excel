@@ -56,16 +56,33 @@ function M.applescript(script)
   return ok, result
 end
 
--- Paste Special > Values
+-- Paste Special variants.
 --
 -- Driving the Mac Excel Paste Special dialog with synthetic keystrokes
 -- is unreliable: macOS dialog radio buttons don't honour Windows-style
--- letter accelerators. Excel's AppleScript dictionary exposes the
--- operation directly, so we call it instead. No dialog, no timing.
+-- letter accelerators. Excel's AppleScript dictionary exposes each
+-- paste variant directly via the `what` parameter, so we call it
+-- instead. No dialog, no timing.
 function M.paste_values()
   M.applescript([[
     tell application "Microsoft Excel"
       paste special (get selection) what paste values
+    end tell
+  ]])
+end
+
+function M.paste_formats()
+  M.applescript([[
+    tell application "Microsoft Excel"
+      paste special (get selection) what paste formats
+    end tell
+  ]])
+end
+
+function M.paste_column_widths()
+  M.applescript([[
+    tell application "Microsoft Excel"
+      paste special (get selection) what paste column widths
     end tell
   ]])
 end
