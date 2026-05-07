@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Lua build artifacts (we don't currently produce any, but just in case)
+*.luac
+*.o
+luac.out
+
+# Project-local logs
+/tmp/mouseless-excel.log
+
+# Hammerspoon state (shouldn't end up here, but belt and braces)
+.hammerspoon/
