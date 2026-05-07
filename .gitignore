@@ -17,7 +17,7 @@
 luac.out
 
 # Project-local logs
-/tmp/mouseless-excel.log
+/tmp/mouseless-mac-excel.log
 
 # Hammerspoon state (shouldn't end up here, but belt and braces)
 .hammerspoon/

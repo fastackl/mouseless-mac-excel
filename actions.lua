@@ -48,8 +48,8 @@ end
 function M.applescript(script)
   local ok, result = hs.osascript.applescript(script)
   if not ok then
-    if _G.__mle_log then
-      _G.__mle_log("applescript error: %s", tostring(result))
+    if _G.__mme_log then
+      _G.__mme_log("applescript error: %s", tostring(result))
     end
     hs.alert.show("AppleScript error (see log)", 1.2)
   end

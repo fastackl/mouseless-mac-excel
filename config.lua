@@ -1,4 +1,4 @@
--- Tunable settings for the Mouseless Excel plugin.
+-- Tunable settings for the Mouseless Mac Excel plugin.
 -- Edit values here, save the file, and Hammerspoon will auto-reload.
 
 return {

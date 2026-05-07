@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Mouseless Excel installer.
+# Mouseless Mac Excel installer.
 #
 # Writes ~/.hammerspoon/init.lua so Hammerspoon loads the plugin from
 # this clone. Idempotent and safe to re-run: any existing init.lua is
@@ -87,5 +87,5 @@ Next steps:
   4. With something on the clipboard, type  e  s  v  to run
      Paste Special > Values.
 
-Logs from the plugin go to /tmp/mouseless-excel.log.
+Logs from the plugin go to /tmp/mouseless-mac-excel.log.
 EOF

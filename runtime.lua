@@ -1,4 +1,4 @@
--- Runtime engine for the Mouseless Excel plugin.
+-- Runtime engine for the Mouseless Mac Excel plugin.
 --
 -- Responsibilities:
 --   1. Watch macOS for Microsoft Excel becoming/leaving frontmost.
@@ -40,10 +40,10 @@ local opt_alone = false
 
 local function log(msg)
   if config.debug then
-    if _G.__mle_log then
-      _G.__mle_log("%s", msg)
+    if _G.__mme_log then
+      _G.__mme_log("%s", msg)
     else
-      print("[mouseless-excel] " .. msg)
+      print("[mouseless-mac-excel] " .. msg)
     end
   end
 end

@@ -1,4 +1,4 @@
-# Mouseless Excel for Mac
+# Mouseless Mac Excel
 
 A Hammerspoon-based plugin that brings Windows-style keyboard shortcuts
 to Microsoft Excel for Mac (developed against Excel 2019, should work
@@ -41,8 +41,8 @@ frontmost application**:
 brew install --cask hammerspoon
 
 # 2. Clone the repo somewhere you'll keep it long-term
-git clone https://github.com/<your-fork-or-this-repo> mouseless-excel
-cd mouseless-excel
+git clone https://github.com/<your-fork-or-this-repo> mouseless-mac-excel
+cd mouseless-mac-excel
 
 # 3. Wire Hammerspoon to this clone
 ./install.sh
@@ -99,7 +99,7 @@ If you don't want to run `install.sh`, you can do its job manually:
 ## Project layout
 
 ```
-mouseless-excel/
+mouseless-mac-excel/
 ├── README.md                     ← this file
 ├── LICENSE                       ← MIT
 ├── install.sh                    ← writes ~/.hammerspoon/init.lua from the template
@@ -183,7 +183,7 @@ Save any file in this folder; Hammerspoon will reload itself.
 | `leader_tap_max_seconds` | Maximum tap duration to enter menu mode. Increase if your taps feel slow. |
 | `menu_idle_timeout_seconds` | How long menu mode waits before silently exiting. |
 | `step_delay_seconds` | Delay between scripted keystrokes inside multi-step actions. Bump if Excel dialogs feel slow. |
-| `debug` | When true, shows on-screen alerts and writes a log to `/tmp/mouseless-excel.log`. |
+| `debug` | When true, shows on-screen alerts and writes a log to `/tmp/mouseless-mac-excel.log`. |
 
 To see the live Hammerspoon console: menu-bar icon → *Console…*.
 
@@ -195,7 +195,7 @@ To see the live Hammerspoon console: menu-bar icon → *Console…*.
   frontmost window. Check that Hammerspoon has Accessibility
   permission, and that you have *quit and relaunched* Hammerspoon
   since granting it. The plugin's own log lives at
-  `/tmp/mouseless-excel.log` — look for `accessibility=true`.
+  `/tmp/mouseless-mac-excel.log` — look for `accessibility=true`.
 - **A sequence runs but Excel does the wrong thing.** Look at the
   action implementation in `actions.lua`. AppleScript-based actions
   are the most reliable; keystroke-based actions are sensitive to
@@ -206,9 +206,9 @@ To see the live Hammerspoon console: menu-bar icon → *Console…*.
   Automation → Hammerspoon → Microsoft Excel*.
 - **I want to disable it temporarily.** Click the Hammerspoon menu-bar
   icon → *Disable*. Re-enable to resume.
-- **I want to verify what's loaded.** Tail `/tmp/mouseless-excel.log`
+- **I want to verify what's loaded.** Tail `/tmp/mouseless-mac-excel.log`
   or open the Hammerspoon console; look for
-  `[mouseless-excel] started: N sequences, M combos` after a reload.
+  `[mouseless-mac-excel] started: N sequences, M combos` after a reload.
 
 ---
 
