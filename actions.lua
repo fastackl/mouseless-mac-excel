@@ -283,6 +283,41 @@ function M.row_height_dialog()
   M.focus_and_select_dialog_field("Row Height")
 end
 
+-- Rename the active sheet. Format > Sheet > Rename in Mac Excel
+-- switches the active sheet's tab into inline-edit mode (no dialog
+-- pops) — the user types the new name and presses Enter.
+--
+-- Ribbon-focus quirk and the Escape below:
+--   Both `M.menu()`/selectMenuItem and System Events `click menu
+--   item` activate the rename correctly, but both also leave
+--   keyboard focus parked on Excel's ribbon strip. The inline-edit
+--   cursor is blinking on the tab, but typing hits the ribbon
+--   instead. Pressing Escape clears the ribbon focus, after which
+--   the inline edit accepts keystrokes normally.
+--
+--   We fire a single Escape ~50 ms after the menu click. Don't
+--   shorten the delay: too early and Escape gets absorbed by the
+--   menu's own dismissal animation, leaving the ribbon still
+--   focused. Don't lengthen it past ~100 ms either: the user can
+--   already be typing by then, and we'd race them.
+--
+-- Deliberately inline rather than a helper / config knob. If a
+-- second menu-activated inline-edit action ever hits the same
+-- ribbon-focus retention, extract to M.dismiss_ribbon_focus() at
+-- that point.
+function M.rename_sheet()
+  M.applescript([[
+    tell application "System Events"
+      tell process "Microsoft Excel"
+        click menu item "Rename" of menu 1 of menu item "Sheet" of menu 1 of menu bar item "Format" of menu bar 1
+      end tell
+    end tell
+  ]])
+  hs.timer.doAfter(0.05, function()
+    hs.eventtap.keyStroke({}, "escape", 0)
+  end)
+end
+
 ----------------------------------------------------------------------
 -- View actions
 ----------------------------------------------------------------------

@@ -21,6 +21,7 @@ return {
 
     { keys = { "o", "c", "w" }, action = "column_width_dialog", desc = "Format > Column > Width..." },
     { keys = { "o", "r", "e" }, action = "row_height_dialog",   desc = "Format > Row > Height..." },
+    { keys = { "o", "h", "r" }, action = "rename_sheet",        desc = "Format > Sheet > Rename" },
   },
 
   combos = {
