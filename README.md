@@ -141,6 +141,7 @@ remove a shortcut.
 | `o c w` | `column_width_dialog` | Format > Column > Width… (opens dialog) |
 | `o r e` | `row_height_dialog` | Format > Row > Height… (opens dialog) |
 | `o h r` | `rename_sheet` | Format > Sheet > Rename (inline edit on the sheet tab) |
+| `o w s` | `insert_sheet` | Insert a new worksheet immediately after the active sheet |
 
 **Single combos** — bound while Excel is frontmost:
 
@@ -361,6 +362,40 @@ Excel property:**
 This kind of asymmetric round-tripping shows up elsewhere too — be
 suspicious whenever you read a property you previously wrote and
 the value seems "off." It's almost certainly the bridge, not you.
+
+### Extracting AppleScript errors
+
+When an AppleScript snippet fails, `hs.osascript.applescript` gives
+you back `(false, nil, descriptor)` where the descriptor is an opaque
+table. `M.applescript` runs `hs.inspect` on it for the log, but the
+keys haven't been stable across Hammerspoon versions and the dump
+can still be uninformative. We hit this trying to debug
+`make new worksheet`, which kept failing with bare `result=nil`.
+
+The reliable pattern: **catch the error inside the AppleScript
+itself** and return it as a regular string through the normal
+result channel.
+
+```applescript
+tell application "Microsoft Excel"
+  try
+    -- the call(s) you want to make
+  on error errMsg number errNum
+    return "ERROR " & errNum & ": " & errMsg
+  end try
+end tell
+```
+
+The Lua side then checks whether `result` starts with `"ERROR "`
+and logs the message. For multi-step scripts where you don't know
+which call fails, wrap each step in its own `try / on error`
+block returning a labelled message (e.g. `"ERROR step2 (make new
+worksheet) -50: Parameter error"`) — `M.insert_sheet` uses this
+pattern and is the reference implementation.
+
+When in doubt, reach for this technique. It's strictly more
+informative than relying on the descriptor, and the AppleScript
+overhead is negligible.
 
 ### Focus-routing artefact
 

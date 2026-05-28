@@ -59,11 +59,30 @@ end
 
 -- Run an AppleScript snippet against Excel and surface failures clearly.
 -- Returns true on success; logs and shows an alert on failure.
+--
+-- hs.osascript.applescript returns three values: (ok, result, descriptor).
+-- On AppleScript-level errors the `result` is nil and the actual error
+-- text lives in the descriptor table under `NSAppleScriptErrorMessage`
+-- (and the error number under `NSAppleScriptErrorNumber`). We pull
+-- those out explicitly so the log entry tells us what went wrong.
 function M.applescript(script)
-  local ok, result = hs.osascript.applescript(script)
+  local ok, result, descriptor = hs.osascript.applescript(script)
   if not ok then
+    -- The descriptor returned by hs.osascript.applescript on
+    -- failure is an opaque table whose key naming we haven't
+    -- reverse-engineered. hs.inspect dumps the whole structure so
+    -- whatever's in there ends up in the log; for AppleScript
+    -- errors where we can write the catch ourselves, prefer
+    -- in-script try/on error (see M.insert_sheet for the pattern).
+    local detail
+    if type(descriptor) == "table" and hs.inspect then
+      detail = hs.inspect(descriptor)
+    else
+      detail = string.format("result=%s descriptor=%s",
+        tostring(result), tostring(descriptor))
+    end
     if _G.__mme_log then
-      _G.__mme_log("applescript error: %s", tostring(result))
+      _G.__mme_log("applescript error: %s", detail)
     end
     hs.alert.show("AppleScript error (see log)", 1.2)
   end
@@ -313,6 +332,74 @@ function M.rename_sheet()
       end tell
     end tell
   ]])
+  hs.timer.doAfter(0.05, function()
+    hs.eventtap.keyStroke({}, "escape", 0)
+  end)
+end
+
+-- Insert a new worksheet immediately after the currently active
+-- sheet, leaving the new sheet as the active one (matching the UX
+-- of clicking the "+" tab button next to your current sheet).
+--
+-- Goes through Excel's AppleScript dictionary rather than the
+-- Insert menu — no menu structure to break, no dialog to focus,
+-- no ribbon-retention quirk.
+--
+-- Sequence:
+--   1. Capture `active sheet` BEFORE creating the new sheet — `make`
+--      activates the new sheet, so a post-make reference to
+--      "active sheet" would resolve to the new sheet itself, not
+--      the user's previous one.
+--   2. `make new worksheet at active workbook`. Excel requires the
+--      explicit `at` location; the bare form, `at end of sheets`,
+--      and `at after active sheet` all reject with -50 Parameter
+--      error on the Excel version we tested.
+--   3. `move newSheet to after oldActive` to land it next to the
+--      user's original sheet rather than at Excel's default.
+--
+-- Each call is wrapped in its own try/on error so a future Excel
+-- change to any one of them produces a labelled error in the log
+-- rather than another opaque "Parameter error". See the README
+-- section "Extracting AppleScript errors" for the broader pattern.
+--
+-- Post-action Escape clears the same arrow-key-eating cell selector
+-- freeze we saw with paste actions; same 50 ms timing.
+function M.insert_sheet()
+  local ok, result = hs.osascript.applescript([[
+    tell application "Microsoft Excel"
+      try
+        set oldActive to active sheet
+      on error errMsg number errNum
+        return "ERROR step1 (get active sheet) " & errNum & ": " & errMsg
+      end try
+
+      try
+        set newSheet to make new worksheet at active workbook
+      on error errMsg number errNum
+        return "ERROR step2 (make new worksheet at active workbook) " & errNum & ": " & errMsg
+      end try
+
+      try
+        move newSheet to after oldActive
+      on error errMsg number errNum
+        return "ERROR step3 (move newSheet to after oldActive) " & errNum & ": " & errMsg
+      end try
+
+      return "ok"
+    end tell
+  ]])
+
+  local failed = (not ok)
+    or (type(result) == "string" and result:sub(1, 6) == "ERROR ")
+  if failed then
+    local detail = (type(result) == "string") and result or "engine error"
+    if _G.__mme_log then
+      _G.__mme_log("insert_sheet: %s", detail)
+    end
+    hs.alert.show("Insert sheet failed (see log)", 1.5)
+    return
+  end
+
   hs.timer.doAfter(0.05, function()
     hs.eventtap.keyStroke({}, "escape", 0)
   end)
