@@ -405,6 +405,62 @@ function M.insert_sheet()
   end)
 end
 
+-- Delete the active worksheet. We leave `display alerts` at its
+-- default `true`, so Excel surfaces its own "Are you sure you want
+-- to permanently delete this sheet?" dialog before doing anything
+-- destructive — the user presses Return to confirm or
+-- Escape/Cancel to abort. We deliberately don't add a Lua-side
+-- confirmation; Excel's native dialog is the safety net.
+--
+-- `delete active sheet` is modal under display-alerts: the
+-- AppleScript call blocks until the user dismisses the dialog, so
+-- by the time we inspect `result`, the outcome is final.
+--
+-- Cancellation: when the user dismisses the confirmation dialog,
+-- AppleScript typically reports error -128 ("User cancelled"). That
+-- is a normal outcome — we swallow it silently rather than flash a
+-- "Delete sheet failed" alert at a user who deliberately bailed.
+-- Anything else (e.g. attempting to delete the only sheet in a
+-- workbook) still surfaces as a short alert and a full log line.
+--
+-- Post-action Escape: same cell-selector freeze nudge that
+-- M.insert_sheet uses (§5 in Agent/ADD_SHORTCUTS.md). Skipped on
+-- the cancellation/error paths since we return early there.
+function M.delete_sheet()
+  local ok, result = hs.osascript.applescript([[
+    tell application "Microsoft Excel"
+      try
+        delete active sheet
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+      return "ok"
+    end tell
+  ]])
+
+  if not ok then
+    if _G.__mme_log then
+      _G.__mme_log("delete_sheet: engine error result=%s", tostring(result))
+    end
+    hs.alert.show("Delete sheet failed (see log)", 1.2)
+    return
+  end
+
+  if type(result) == "string" and result:sub(1, 6) == "ERROR " then
+    if result:find("%-128") then
+      if _G.__mme_log then _G.__mme_log("delete_sheet: cancelled by user") end
+      return
+    end
+    if _G.__mme_log then _G.__mme_log("delete_sheet: %s", result) end
+    hs.alert.show("Delete sheet: " .. result:sub(7), 1.5)
+    return
+  end
+
+  hs.timer.doAfter(0.05, function()
+    hs.eventtap.keyStroke({}, "escape", 0)
+  end)
+end
+
 ----------------------------------------------------------------------
 -- View actions
 ----------------------------------------------------------------------

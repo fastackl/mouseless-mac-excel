@@ -153,6 +153,7 @@ remove a shortcut.
 | `o r e` | `row_height_dialog` | Format > Row > Height… (opens dialog) |
 | `o h r` | `rename_sheet` | Format > Sheet > Rename (inline edit on the sheet tab) |
 | `o w s` | `insert_sheet` | Insert a new worksheet immediately after the active sheet |
+| `e l` | `delete_sheet` | Delete the active worksheet (Excel shows its native confirmation dialog first) |
 
 **Single combos** — bound while Excel is frontmost:
 

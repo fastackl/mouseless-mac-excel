@@ -23,6 +23,7 @@ return {
     { keys = { "o", "r", "e" }, action = "row_height_dialog",   desc = "Format > Row > Height..." },
     { keys = { "o", "h", "r" }, action = "rename_sheet",        desc = "Format > Sheet > Rename" },
     { keys = { "o", "w", "s" }, action = "insert_sheet",        desc = "Insert new sheet (after active)" },
+    { keys = { "e", "l" },      action = "delete_sheet",        desc = "Delete active sheet (confirms)" },
   },
 
   combos = {
