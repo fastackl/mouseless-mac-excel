@@ -162,6 +162,7 @@ remove a shortcut.
 | --- | --- | --- |
 | `Cmd+Shift+V` | `paste_values` | Paste Values |
 | `Ctrl+Shift+C` | `cycle_font_color` | Cycle font color through `config.font_color_cycle` |
+| `Ctrl+Shift+V` | `cycle_fill_color` | Cycle fill color through `config.fill_color_cycle` |
 | `Ctrl+Shift+I` | `zoom_in` | Zoom in by `config.zoom_step` (clamped to `zoom_max`) |
 | `Ctrl+Shift+J` | `zoom_out` | Zoom out by `config.zoom_step` (clamped to `zoom_min`) |
 | `Ctrl+Shift+Space` | `select_column` | Select the entire column(s) covered by the current selection |
@@ -576,6 +577,7 @@ tail -f /tmp/mouseless-mac-excel.log
 | `dialog_focus_click` | When `true` (default), dialog-opening actions synthesise a mouse click on the dialog's text field and select its existing value so typing replaces it (Windows-Excel-style overtype). The cursor briefly flickers to the field and back. Turn off to keep the cursor undisturbed and click into dialogs manually. See the [focus-routing note](#focus-routing-artefact). |
 | `dialog_focus_click_delay_seconds` | Delay (seconds) between opening a dialog and looking it up in the AX tree to click. Default `0.08`. Bump if the log shows `focus_and_select: dialog "..." not found`. |
 | `font_color_cycle` | Ordered list of 6-character hex strings the `cycle_font_color` action walks through. Edit to taste — order is significant. Leading `#` tolerated, case-insensitive. |
+| `fill_color_cycle` | Ordered list of fill entries the `cycle_fill_color` action walks through. Each entry is either a 6-character hex string (leading `#` tolerated, case-insensitive) or the literal `"none"` to clear fill. |
 | `zoom_min` / `zoom_max` / `zoom_step` | Lower bound, upper bound, and step (all integer percentages) for `zoom_in` / `zoom_out`. Defaults: `50` / `200` / `10`. Snap-to-step: zoom-in from 117% lands on 120%, from 120% lands on 130%. |
 | `debug` | When true, shows on-screen alerts and writes `/tmp/mouseless-mac-excel.log`. |
 

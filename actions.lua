@@ -669,6 +669,141 @@ function M.cycle_font_color()
 end
 
 ----------------------------------------------------------------------
+-- Fill actions
+----------------------------------------------------------------------
+
+-- Cycle the fill (cell background) colour of the current selection
+-- through the list defined in config.fill_color_cycle.
+--
+-- Semantics mirror cycle_font_color: read the fill of the first cell in
+-- the selection, advance to the next entry (wrapping), and apply to the
+-- whole selection. The cycle may include the literal string "none" to
+-- clear fill.
+function M.cycle_fill_color()
+  local cycle = config.fill_color_cycle or {}
+  if #cycle == 0 then
+    if _G.__mme_log then
+      _G.__mme_log("cycle_fill_color: config.fill_color_cycle is empty")
+    end
+    return
+  end
+
+  local function hex_to_rgb16(hex)
+    local r = tonumber(hex:sub(1, 2), 16)
+    local g = tonumber(hex:sub(3, 4), 16)
+    local b = tonumber(hex:sub(5, 6), 16)
+    if not (r and g and b) then return nil end
+    return r * 257, g * 257, b * 257
+  end
+
+  local function read_rgb_to_hex(r, g, b)
+    if math.max(r, g, b) > 255 then
+      return string.format("%02X%02X%02X",
+        math.floor(r / 257 + 0.5),
+        math.floor(g / 257 + 0.5),
+        math.floor(b / 257 + 0.5))
+    end
+    return string.format("%02X%02X%02X", r, g, b)
+  end
+
+  -- Normalise cycle entries:
+  --   - "none" (any case) is preserved as the sentinel "NONE"
+  --   - valid hex strings are uppercased without leading '#'
+  local cycle_norm = {}
+  for _, c in ipairs(cycle) do
+    local s = tostring(c)
+    if s:lower() == "none" then
+      cycle_norm[#cycle_norm + 1] = "NONE"
+    else
+      local h = s:gsub("^#", ""):upper()
+      if #h == 6 and hex_to_rgb16(h) then
+        cycle_norm[#cycle_norm + 1] = h
+      elseif _G.__mme_log then
+        _G.__mme_log("cycle_fill_color: ignoring invalid entry %q", tostring(c))
+      end
+    end
+  end
+  if #cycle_norm == 0 then
+    if _G.__mme_log then
+      _G.__mme_log("cycle_fill_color: no valid entries in config.fill_color_cycle")
+    end
+    return
+  end
+
+  -- Read the current fill of the first selected cell.
+  -- We try to distinguish "no fill" from a real colour by checking the
+  -- interior pattern first; if that fails, we fall back to reading the
+  -- colour tuple and treating "missing value" as NONE.
+  local ok_read, result = hs.osascript.applescript([[
+    tell application "Microsoft Excel"
+      try
+        set c to cell 1 of selection
+        set i to interior object of c
+        try
+          set p to pattern of i
+          if p is pattern none then return "NONE"
+        end try
+
+        set fc to color of i
+        if fc is missing value then return "NONE"
+        return ((item 1 of fc) as text) & "," & ((item 2 of fc) as text) & "," & ((item 3 of fc) as text)
+      on error errMsg
+        return "ERROR: " & errMsg
+      end try
+    end tell
+  ]])
+
+  local current_key
+  if ok_read and type(result) == "string" and not result:find("^ERROR") then
+    if result == "NONE" then
+      current_key = "NONE"
+    else
+      local r, g, b = result:match("^(%-?%d+),(%-?%d+),(%-?%d+)$")
+      if r and g and b then
+        current_key = read_rgb_to_hex(tonumber(r), tonumber(g), tonumber(b))
+      end
+    end
+  end
+
+  local next_key = cycle_norm[1]
+  if current_key then
+    for i, c in ipairs(cycle_norm) do
+      if c == current_key then
+        next_key = cycle_norm[(i % #cycle_norm) + 1]
+        break
+      end
+    end
+  end
+
+  if next_key == "NONE" then
+    M.applescript([[
+      tell application "Microsoft Excel"
+        try
+          set i to interior object of selection
+          set pattern of i to pattern none
+        on error errMsg
+          return "ERROR: " & errMsg
+        end try
+      end tell
+    ]])
+    return
+  end
+
+  local nr, ng, nb = hex_to_rgb16(next_key)
+  M.applescript(string.format([[
+    tell application "Microsoft Excel"
+      try
+        set i to interior object of selection
+        set pattern of i to pattern solid
+        set color of i to {%d, %d, %d}
+      on error errMsg
+        return "ERROR: " & errMsg
+      end try
+    end tell
+  ]], nr, ng, nb))
+end
+
+----------------------------------------------------------------------
 -- Selection actions
 ----------------------------------------------------------------------
 

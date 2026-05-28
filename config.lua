@@ -65,6 +65,16 @@ return {
   -- applied instead. Edit freely — order is significant.
   font_color_cycle = { "0433FF", "FF2600", "008F00", "000000" },
 
+  -- Fill colours (cell background) that the Cycle Fill Color shortcut
+  -- (Ctrl+Shift+V by default) walks through, in order. Each entry is
+  -- either a 6-character hex string (case-insensitive; a leading "#"
+  -- is tolerated) or the literal string "none" to clear the fill.
+  -- Pressing the shortcut advances the selection's current fill from
+  -- its current entry to the next one in the list, wrapping at the
+  -- end. If the current fill isn't in the list, the first entry is
+  -- applied instead. Edit freely — order is significant.
+  fill_color_cycle = { "BFF7FA", "D9D9D9", "none" },
+
   -- When true, show small on-screen alerts as you type a sequence and
   -- log every action to the Hammerspoon console. Helpful while we
   -- iterate; turn off once shortcuts feel stable.
