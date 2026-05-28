@@ -32,5 +32,6 @@ return {
     { mods = { "ctrl", "shift" }, key = "c", action = "cycle_font_color", desc = "Cycle font color" },
     { mods = { "ctrl", "shift" }, key = "i", action = "zoom_in",          desc = "Zoom in" },
     { mods = { "ctrl", "shift" }, key = "j", action = "zoom_out",         desc = "Zoom out" },
+    { mods = { "ctrl", "shift" }, key = "space", action = "select_column", desc = "Select current column" },
   },
 }

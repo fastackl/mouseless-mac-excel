@@ -676,4 +676,27 @@ function M.cycle_font_color()
   ]], nr, ng, nb))
 end
 
+----------------------------------------------------------------------
+-- Selection actions
+----------------------------------------------------------------------
+
+-- Expand the current selection to cover the full column(s) it spans.
+-- Mirrors Excel's Windows-style Ctrl+Space, but bound to
+-- Ctrl+Shift+Space here because plain Ctrl+Space is widely
+-- intercepted by macOS for input-source switching before Excel ever
+-- sees the keystroke.
+--
+-- `entire column of selection` returns a Range covering every
+-- column that any cell of the current selection touches, so a
+-- multi-column selection grows to all those columns at once —
+-- matching native Excel behaviour. No post-action Escape needed:
+-- this is a pure selection change, no overlay or modal lands.
+function M.select_column()
+  M.applescript([[
+    tell application "Microsoft Excel"
+      select (entire column of selection)
+    end tell
+  ]])
+end
+
 return M

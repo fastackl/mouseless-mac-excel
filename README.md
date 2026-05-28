@@ -164,6 +164,7 @@ remove a shortcut.
 | `Ctrl+Shift+C` | `cycle_font_color` | Cycle font color through `config.font_color_cycle` |
 | `Ctrl+Shift+I` | `zoom_in` | Zoom in by `config.zoom_step` (clamped to `zoom_max`) |
 | `Ctrl+Shift+J` | `zoom_out` | Zoom out by `config.zoom_step` (clamped to `zoom_min`) |
+| `Ctrl+Shift+Space` | `select_column` | Select the entire column(s) covered by the current selection |
 
 ---
 
