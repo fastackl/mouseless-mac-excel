@@ -139,6 +139,7 @@ remove a shortcut.
 | `e s t` | `paste_formats` | Paste Special > Formats |
 | `e s w` | `paste_column_widths` | Paste Special > Column Widths |
 | `o c w` | `column_width_dialog` | Format > Column > Width… (opens dialog) |
+| `o r e` | `row_height_dialog` | Format > Row > Height… (opens dialog) |
 
 **Single combos** — bound while Excel is frontmost:
 

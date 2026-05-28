@@ -270,4 +270,17 @@ function M.column_width_dialog()
   M.focus_and_select_dialog_field("Column Width")
 end
 
+-- Row equivalent of column_width_dialog: opens Format > Row > Height...
+-- with the existing height pre-selected for overtype.
+function M.row_height_dialog()
+  M.applescript([[
+    tell application "System Events"
+      tell process "Microsoft Excel"
+        click menu item "Height..." of menu 1 of menu item "Row" of menu 1 of menu bar item "Format" of menu bar 1
+      end tell
+    end tell
+  ]])
+  M.focus_and_select_dialog_field("Row Height")
+end
+
 return M
