@@ -22,6 +22,7 @@ return {
     { keys = { "o", "c", "w" }, action = "column_width_dialog", desc = "Format > Column > Width..." },
     { keys = { "o", "r", "e" }, action = "row_height_dialog",   desc = "Format > Row > Height..." },
     { keys = { "o", "h", "r" }, action = "rename_sheet",        desc = "Format > Sheet > Rename" },
+    { keys = { "o", "h", "m" }, action = "move_sheet_dialog",   desc = "Edit > Sheet > Move or Copy..." },
     { keys = { "o", "w", "s" }, action = "insert_sheet",        desc = "Insert new sheet (after active)" },
     { keys = { "e", "l" },      action = "delete_sheet",        desc = "Delete active sheet (confirms)" },
   },

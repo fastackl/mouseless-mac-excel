@@ -152,6 +152,7 @@ remove a shortcut.
 | `o c w` | `column_width_dialog` | Format > Column > Width… (opens dialog) |
 | `o r e` | `row_height_dialog` | Format > Row > Height… (opens dialog) |
 | `o h r` | `rename_sheet` | Format > Sheet > Rename (inline edit on the sheet tab) |
+| `o h m` | `move_sheet_dialog` | Edit > Sheet > Move or Copy… (opens dialog) |
 | `o w s` | `insert_sheet` | Insert a new worksheet immediately after the active sheet |
 | `e l` | `delete_sheet` | Delete the active worksheet (Excel shows its native confirmation dialog first) |
 

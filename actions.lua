@@ -337,6 +337,32 @@ function M.rename_sheet()
   end)
 end
 
+-- Open Edit > Sheet > Move or Copy Sheet... — Excel's native
+-- "Move or Copy" dialog where the user picks a destination workbook
+-- and target position. The dialog's controls are dropdowns and
+-- checkboxes (no text field for typing), so we don't need
+-- M.focus_and_select_dialog_field — once the dialog is visible the
+-- user navigates it with Tab and arrow keys natively.
+--
+-- Path note: Windows Excel keeps Move or Copy under Format > Sheet;
+-- Mac Excel keeps it under Edit > Sheet. The trigger letters are
+-- whatever the user wants — they don't have to mirror the Mac menu
+-- path. Verified the label is the literal three-dot "Move or Copy
+-- Sheet..." (not the Unicode ellipsis) on this Excel build via a
+-- probe dump.
+--
+-- No post-action Escape: this opens a modal dialog that already
+-- holds focus, and an Escape would just close it.
+function M.move_sheet_dialog()
+  M.applescript([[
+    tell application "System Events"
+      tell process "Microsoft Excel"
+        click menu item "Move or Copy Sheet..." of menu 1 of menu item "Sheet" of menu 1 of menu bar item "Edit" of menu bar 1
+      end tell
+    end tell
+  ]])
+end
+
 -- Insert a new worksheet immediately after the currently active
 -- sheet, leaving the new sheet as the active one (matching the UX
 -- of clicking the "+" tab button next to your current sheet).
