@@ -699,4 +699,35 @@ function M.select_column()
   ]])
 end
 
+----------------------------------------------------------------------
+-- Sheet navigation
+----------------------------------------------------------------------
+
+-- Activate the next / previous sheet in the workbook by piggy-
+-- backing on Mac Excel's own native shortcut: Opt+Right (next) and
+-- Opt+Left (prev). We just synthesise those keystrokes; Excel
+-- handles all the workbook lookup, sheet ordering, and clamping at
+-- the workbook ends.
+--
+-- Why we gave up on AppleScript here:
+--   We tried three increasingly-defensive AppleScript variants —
+--   `index of active sheet`, then a stored `active workbook`, then
+--   `name of every worksheet of active workbook` — and each one
+--   ended up coercing a `missing value` into an integer somewhere
+--   in the chain. With per-step labelled `try/on error` we
+--   narrowed it to the worksheet-name lookup (`name of worksheet i
+--   of active workbook` is missing value on at least one i, on
+--   this Excel build). Rather than keep guessing which AppleScript
+--   subexpression will misfire next, we let Excel's existing
+--   keyboard handler do the lookup for us.
+--
+-- Trigger is whatever the user wires up in shortcuts.lua. They've
+-- chosen Shift+Opt+Down=next and Shift+Opt+Up=prev. Note the user
+-- will be physically holding Shift+Opt when these fire; the
+-- synthesised events carry only the Opt flag, so Excel sees clean
+-- Opt+Right / Opt+Left. If you ever see Excel responding as if
+-- Shift were also down, that's the place to look.
+function M.next_sheet() M.send({ "alt" }, "right") end
+function M.prev_sheet() M.send({ "alt" }, "left")  end
+
 return M

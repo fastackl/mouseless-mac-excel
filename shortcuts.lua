@@ -33,5 +33,7 @@ return {
     { mods = { "ctrl", "shift" }, key = "i", action = "zoom_in",          desc = "Zoom in" },
     { mods = { "ctrl", "shift" }, key = "j", action = "zoom_out",         desc = "Zoom out" },
     { mods = { "ctrl", "shift" }, key = "space", action = "select_column", desc = "Select current column" },
+    { mods = { "shift", "alt" },   key = "down",  action = "next_sheet",    desc = "Activate next sheet" },
+    { mods = { "shift", "alt" },   key = "up",    action = "prev_sheet",    desc = "Activate previous sheet" },
   },
 }

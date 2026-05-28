@@ -165,6 +165,8 @@ remove a shortcut.
 | `Ctrl+Shift+I` | `zoom_in` | Zoom in by `config.zoom_step` (clamped to `zoom_max`) |
 | `Ctrl+Shift+J` | `zoom_out` | Zoom out by `config.zoom_step` (clamped to `zoom_min`) |
 | `Ctrl+Shift+Space` | `select_column` | Select the entire column(s) covered by the current selection |
+| `Shift+Opt+Down` | `next_sheet` | Activate the next sheet in the workbook (no wrap at the end) |
+| `Shift+Opt+Up` | `prev_sheet` | Activate the previous sheet in the workbook (no wrap at the start) |
 
 ---
 
