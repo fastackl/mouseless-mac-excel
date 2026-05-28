@@ -8,16 +8,17 @@
 #
 # Run from inside the clone:
 #
-#   ./install.sh
+#   ./install/install.sh
 #
 # Or from anywhere:
 #
-#   /absolute/path/to/clone/install.sh
+#   /absolute/path/to/clone/install/install.sh
 
 set -euo pipefail
 
-# Resolve this script's directory (the repo root) regardless of where
-# it was invoked from or whether it was run via a symlink.
+# Resolve this script's directory regardless of where it was invoked
+# from or whether it was run via a symlink. The script lives in
+# install/, so the project root is one level up.
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 while [ -L "$SCRIPT_PATH" ]; do
   SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
@@ -27,15 +28,16 @@ while [ -L "$SCRIPT_PATH" ]; do
     *) SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_PATH" ;;
   esac
 done
-PROJECT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-TEMPLATE="$PROJECT_DIR/hammerspoon-bootstrap.lua"
+TEMPLATE="$SCRIPT_DIR/hammerspoon-bootstrap.lua"
 HS_DIR="$HOME/.hammerspoon"
 HS_INIT="$HS_DIR/init.lua"
 
 if [ ! -f "$TEMPLATE" ]; then
   echo "Error: template not found at $TEMPLATE" >&2
-  echo "Are you running install.sh from inside the cloned repo?" >&2
+  echo "Are you running install/install.sh from inside the cloned repo?" >&2
   exit 1
 fi
 

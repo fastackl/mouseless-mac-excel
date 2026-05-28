@@ -9,10 +9,16 @@ the shortcut you want, the assistant edits `shortcuts.lua` (and
 `actions.lua` if needed), Hammerspoon picks the change up automatically.
 You can of course also edit by hand — it is just plain Lua tables.
 
-If you are an AI agent picking this up for the first time, jump straight
-to **[Adding a new shortcut](#adding-a-new-shortcut)** and the
+**Want to add shortcuts with an AI agent?** Open
+[`ADD_SHORTCUTS.md`](ADD_SHORTCUTS.md), copy the prompt section into
+a fresh Cursor chat that has this repo open, then start asking for
+shortcuts. The prompt embeds all the context and gotchas the agent
+needs to be productive immediately.
+
+If you are an AI agent picking this up directly, also jump to
+**[Adding a new shortcut](#adding-a-new-shortcut)** and the
 **[Mac Excel implementation notes](#mac-excel-implementation-notes)**
-below — those two sections are the playbook.
+below — those two sections are the canonical playbook.
 
 ---
 
@@ -50,12 +56,13 @@ git clone https://github.com/fastackl/mouseless-mac-excel mouseless-mac-excel
 cd mouseless-mac-excel
 
 # 3. Wire Hammerspoon to this clone
-./install.sh
+./install/install.sh
 ```
 
-`install.sh` writes `~/.hammerspoon/init.lua` so Hammerspoon loads the
-plugin from your clone. It backs up any existing `init.lua` first, so
-it is safe to re-run. It does not modify anything else on your system.
+`install/install.sh` writes `~/.hammerspoon/init.lua` so Hammerspoon
+loads the plugin from your clone. It backs up any existing `init.lua`
+first, so it is safe to re-run. It does not modify anything else on
+your system.
 
 After running it:
 
@@ -92,9 +99,10 @@ them once and they will not ask again.
 
 ### Setting up the bridge by hand
 
-If you do not want to run `install.sh`, you can do its job manually:
+If you do not want to run `install/install.sh`, you can do its job
+manually:
 
-1. Open `hammerspoon-bootstrap.lua` from this clone.
+1. Open `install/hammerspoon-bootstrap.lua` from this clone.
 2. Copy its contents into `~/.hammerspoon/init.lua` (creating the file
    if it does not exist; merging into your existing one if you already
    have a Hammerspoon config for other reasons).
@@ -108,15 +116,18 @@ If you do not want to run `install.sh`, you can do its job manually:
 
 ```
 mouseless-mac-excel/
-├── README.md                     ← this file
-├── LICENSE                       ← MIT
-├── install.sh                    ← writes ~/.hammerspoon/init.lua from the template
-├── hammerspoon-bootstrap.lua     ← template for ~/.hammerspoon/init.lua
-├── init.lua                      ← project entry point (rarely edited)
-├── config.lua                    ← tunables: leader timeout, debug, step delay
-├── shortcuts.lua                 ← *** declarative shortcut table — edit this most ***
-├── actions.lua                   ← action implementations (edit when adding new logic)
-└── runtime.lua                   ← engine: app watcher, leader detector, sequence modal
+├── README.md                       ← this file
+├── LICENSE                         ← MIT
+├── init.lua                        ← project entry point (rarely edited)
+├── config.lua                      ← tunables: leader timeout, debug, step delay
+├── shortcuts.lua                   ← *** declarative shortcut table — edit this most ***
+├── actions.lua                     ← action implementations (edit when adding new logic)
+├── runtime.lua                     ← engine: app watcher, leader detector, sequence modal
+├── install/
+│   ├── install.sh                  ← writes ~/.hammerspoon/init.lua from the template
+│   └── hammerspoon-bootstrap.lua   ← template for ~/.hammerspoon/init.lua
+└── Agent/
+    └── ADD_SHORTCUTS.md            ← copy-paste prompt for AI-assisted shortcut work
 ```
 
 `~/.hammerspoon/init.lua` is a thin bootstrap that points Hammerspoon
