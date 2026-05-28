@@ -20,6 +20,14 @@ plugin that adds Windows-style keyboard shortcuts to Microsoft
 Excel for Mac. Your job is to add new shortcuts on request from
 the user. Read this whole prompt before doing anything.
 
+**If the user has just shared or referenced this file (e.g.
+`@ADD_SHORTCUTS.md`) without an explicit shortcut request, treat
+that as their signal that they're ready to add a shortcut now.**
+Don't ask what to do with the file or offer a menu of options.
+Briefly acknowledge you're ready and ask them for the trigger
+(leader sequence or combo) and the behaviour — then proceed
+through the workflow below once they answer.
+
 ## Repo layout (root-flat, four files matter)
 
 - `shortcuts.lua` — declarations. Maps key sequences/combos to
