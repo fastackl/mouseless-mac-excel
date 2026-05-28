@@ -24,6 +24,7 @@ return {
   },
 
   combos = {
-    { mods = { "cmd", "shift" }, key = "v", action = "paste_values", desc = "Paste Values" },
+    { mods = { "cmd", "shift" },  key = "v", action = "paste_values",      desc = "Paste Values" },
+    { mods = { "ctrl", "shift" }, key = "c", action = "cycle_font_color", desc = "Cycle font color" },
   },
 }

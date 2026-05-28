@@ -283,4 +283,124 @@ function M.row_height_dialog()
   M.focus_and_select_dialog_field("Row Height")
 end
 
+----------------------------------------------------------------------
+-- Font actions
+----------------------------------------------------------------------
+
+-- Cycle the font colour of the current selection through the list
+-- defined in config.font_color_cycle.
+--
+-- Per-cell semantics: read the font colour of the first cell in the
+-- selection, find it in the cycle, apply the next colour (wrapping
+-- at the end) to the whole selection. If the current colour isn't
+-- in the cycle (the common case being Excel's default black on a
+-- cell the user has never coloured), apply the first cycle entry.
+--
+-- Implementation notes:
+--   - Excel for Mac is asymmetric about RGB units: it ACCEPTS 16-bit
+--     values (0..65535) on write but RETURNS 8-bit values (0..255)
+--     on read. Found this empirically: setting {1028, 13107, 65535}
+--     for blue paints the cell correctly, but reading the same cell
+--     back gives {4, 51, 255}. So writing scales hex 0..255 up by
+--     257 to 0..65535; reading auto-detects 8-bit vs 16-bit based
+--     on whether any component exceeds 255, and only rescales when
+--     needed (future-proof against an Excel version that ever
+--     returns 16-bit again).
+--   - The read is wrapped in try/on error so a non-range selection
+--     (chart, image, etc.) returns "ERROR: ..." instead of throwing.
+--     In that case we fall through to applying cycle[1].
+--   - The set goes through M.applescript, so any failure (e.g.
+--     selection is read-only) surfaces as an alert and a log line.
+function M.cycle_font_color()
+  local cycle = config.font_color_cycle or {}
+  if #cycle == 0 then
+    if _G.__mme_log then
+      _G.__mme_log("cycle_font_color: config.font_color_cycle is empty")
+    end
+    return
+  end
+
+  -- Conversion helpers between 8-bit "RRGGBB" hex (what the user
+  -- edits in config) and Excel's AppleScript RGB tuples. See the
+  -- docstring for why the read side has to auto-detect units.
+
+  -- "RRGGBB" hex -> 16-bit RGB (0..65535) for the SET AppleScript.
+  local function hex_to_rgb16(hex)
+    local r = tonumber(hex:sub(1, 2), 16)
+    local g = tonumber(hex:sub(3, 4), 16)
+    local b = tonumber(hex:sub(5, 6), 16)
+    if not (r and g and b) then return nil end
+    return r * 257, g * 257, b * 257
+  end
+
+  -- Whatever Excel returned (8-bit or 16-bit per channel) -> "RRGGBB"
+  -- hex. If any component exceeds 255 we treat the input as 16-bit
+  -- and rescale; otherwise we trust the input is already 8-bit and
+  -- format directly.
+  local function read_rgb_to_hex(r, g, b)
+    if math.max(r, g, b) > 255 then
+      return string.format("%02X%02X%02X",
+        math.floor(r / 257 + 0.5),
+        math.floor(g / 257 + 0.5),
+        math.floor(b / 257 + 0.5))
+    end
+    return string.format("%02X%02X%02X", r, g, b)
+  end
+
+  -- Normalise cycle entries: strip optional leading '#', uppercase,
+  -- discard anything that isn't a valid 6-hex string.
+  local cycle_norm = {}
+  for _, c in ipairs(cycle) do
+    local h = tostring(c):gsub("^#", ""):upper()
+    if #h == 6 and hex_to_rgb16(h) then
+      cycle_norm[#cycle_norm + 1] = h
+    elseif _G.__mme_log then
+      _G.__mme_log("cycle_font_color: ignoring invalid hex %q", tostring(c))
+    end
+  end
+  if #cycle_norm == 0 then
+    if _G.__mme_log then
+      _G.__mme_log("cycle_font_color: no valid hex entries in config.font_color_cycle")
+    end
+    return
+  end
+
+  -- Read the current font colour of the first selected cell.
+  local ok_read, result = hs.osascript.applescript([[
+    tell application "Microsoft Excel"
+      try
+        set fc to color of font object of (cell 1 of selection)
+        return ((item 1 of fc) as text) & "," & ((item 2 of fc) as text) & "," & ((item 3 of fc) as text)
+      on error errMsg
+        return "ERROR: " & errMsg
+      end try
+    end tell
+  ]])
+
+  local current_hex
+  if ok_read and type(result) == "string" and not result:find("^ERROR") then
+    local r, g, b = result:match("^(%-?%d+),(%-?%d+),(%-?%d+)$")
+    if r and g and b then
+      current_hex = read_rgb_to_hex(tonumber(r), tonumber(g), tonumber(b))
+    end
+  end
+
+  local next_hex = cycle_norm[1]
+  if current_hex then
+    for i, c in ipairs(cycle_norm) do
+      if c == current_hex then
+        next_hex = cycle_norm[(i % #cycle_norm) + 1]
+        break
+      end
+    end
+  end
+
+  local nr, ng, nb = hex_to_rgb16(next_hex)
+  M.applescript(string.format([[
+    tell application "Microsoft Excel"
+      set color of font object of selection to {%d, %d, %d}
+    end tell
+  ]], nr, ng, nb))
+end
+
 return M

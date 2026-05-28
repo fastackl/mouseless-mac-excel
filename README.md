@@ -146,6 +146,7 @@ remove a shortcut.
 | Keys | Action | Description |
 | --- | --- | --- |
 | `Cmd+Shift+V` | `paste_values` | Paste Values |
+| `Ctrl+Shift+C` | `cycle_font_color` | Cycle font color through `config.font_color_cycle` |
 
 ---
 
@@ -321,6 +322,43 @@ the dialog with its default selection.
 dictionary (`paste special`, `select`, `copy`, `clear`, etc.), use
 that. It is faster, dialog-free, and doesn't depend on timing.
 
+### AppleScript can lie about its own output — verify round-trips
+
+Mac Excel's AppleScript bridge is **not symmetric** about value
+formats: the units it accepts on write are not always the units
+it returns on read. The canonical example is font colour:
+
+- **Writing** `set color of font object of selection to {1028, 13107, 65535}`
+  paints the cell blue (`#0433FF`). 16-bit RGB, as the standard
+  AppleScript `RGB color` type expects.
+- **Reading** the *same* cell's `color of font object` returns
+  `{4, 51, 255}`. Same colour, but in 8-bit units this time. Read
+  it back with the natural assumption that it's 16-bit and you'll
+  get a hex value of `000001` — nothing like the `0433FF` you
+  wrote — and any "did the user pick a colour I know about?" logic
+  silently breaks.
+
+This bit us in `M.cycle_font_color`: the first press cycled black
+→ blue correctly, but every subsequent press kept the cell on blue
+because the read-back colour never matched any cycle entry.
+
+**Defensive pattern for any action that reads then writes the same
+Excel property:**
+
+1. Don't trust the docs (or your past experience) about units —
+   the AppleScript dictionary doesn't expose them and behaviour
+   has shifted across Excel versions.
+2. Always log the raw read once during development. The shape of
+   the data is the spec.
+3. Where it's cheap to do so, **auto-detect** the units on read
+   rather than hardcode them. For RGB the detection is trivial
+   ("does any component exceed 255?"); for other property types
+   the detection might be different but the principle stands.
+
+This kind of asymmetric round-tripping shows up elsewhere too — be
+suspicious whenever you read a property you previously wrote and
+the value seems "off." It's almost certainly the bridge, not you.
+
 ### Focus-routing artefact
 
 This shows up in two distinct flavours; both are fixed by the same
@@ -483,6 +521,7 @@ tail -f /tmp/mouseless-mac-excel.log
 | `step_delay_seconds` | Delay between scripted keystrokes inside multi-step `M.sequence()` actions. Bump if Excel dialogs feel slow. |
 | `dialog_focus_click` | When `true` (default), dialog-opening actions synthesise a mouse click on the dialog's text field and select its existing value so typing replaces it (Windows-Excel-style overtype). The cursor briefly flickers to the field and back. Turn off to keep the cursor undisturbed and click into dialogs manually. See the [focus-routing note](#focus-routing-artefact). |
 | `dialog_focus_click_delay_seconds` | Delay (seconds) between opening a dialog and looking it up in the AX tree to click. Default `0.08`. Bump if the log shows `focus_and_select: dialog "..." not found`. |
+| `font_color_cycle` | Ordered list of 6-character hex strings the `cycle_font_color` action walks through. Edit to taste — order is significant. Leading `#` tolerated, case-insensitive. |
 | `debug` | When true, shows on-screen alerts and writes `/tmp/mouseless-mac-excel.log`. |
 
 To see the live Hammerspoon console: menu-bar icon → *Console…*.

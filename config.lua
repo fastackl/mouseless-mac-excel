@@ -41,6 +41,16 @@ return {
   -- (the dialog hadn't rendered yet when we went looking).
   dialog_focus_click_delay_seconds = 0.08,
 
+  -- Font colours that the Cycle Font Color shortcut (Ctrl+Shift+C by
+  -- default) walks through, in order. Each entry is a 6-character hex
+  -- string (case-insensitive; a leading "#" is tolerated). Pressing
+  -- the shortcut advances the current selection's font colour from
+  -- its current entry to the next one in the list, wrapping at the
+  -- end. If the current colour isn't in the list (typically because
+  -- the cell is still Excel's default black), the first entry is
+  -- applied instead. Edit freely — order is significant.
+  font_color_cycle = { "0433FF", "FF2600", "008F00", "000000" },
+
   -- When true, show small on-screen alerts as you type a sequence and
   -- log every action to the Hammerspoon console. Helpful while we
   -- iterate; turn off once shortcuts feel stable.
