@@ -271,6 +271,37 @@ function M.focus_and_select_dialog_field(window_title)
   end)
 end
 
+-- After a System Events menu-bar click, macOS leaves keyboard focus
+-- parked on Excel's ribbon strip even though the downstream control
+-- (inline-edit cursor, modal dialog, ...) is the logical target.
+-- The user's first keystroke hits the ribbon instead.
+--
+-- The fix is a single Escape ~50ms after the click: Escape clears
+-- the ribbon focus, and the downstream control inherits first
+-- responder on its own (verified empirically across rename_sheet
+-- and delete_sheet — both inline-edit and modal-alert flavours).
+--
+-- For dialog cases:
+--   At 50ms the alert dialog usually hasn't fully rendered yet, so
+--   the Escape doesn't risk cancelling it; it lands on the ribbon
+--   (which still has first responder) and clears that. By the time
+--   the dialog finishes opening the responder chain is clean and
+--   it grabs first responder on its own. We tried AX-locating the
+--   dialog and synthesising a mouse-click on its top-centre — the
+--   click was insufficient to promote first responder for
+--   button-only dialogs (worked for text-field dialogs because the
+--   click landed on a focusable control).
+--
+-- Don't shorten below ~50ms (Escape gets absorbed by the menu
+-- dismissal animation) or extend past ~100ms (the user could
+-- already be typing, and for genuinely-focused alerts the Escape
+-- would cancel).
+function M.dismiss_menu_focus()
+  hs.timer.doAfter(0.05, function()
+    hs.eventtap.keyStroke({}, "escape", 0)
+  end)
+end
+
 ----------------------------------------------------------------------
 -- Format menu actions
 ----------------------------------------------------------------------
@@ -306,24 +337,10 @@ end
 -- switches the active sheet's tab into inline-edit mode (no dialog
 -- pops) — the user types the new name and presses Enter.
 --
--- Ribbon-focus quirk and the Escape below:
---   Both `M.menu()`/selectMenuItem and System Events `click menu
---   item` activate the rename correctly, but both also leave
---   keyboard focus parked on Excel's ribbon strip. The inline-edit
---   cursor is blinking on the tab, but typing hits the ribbon
---   instead. Pressing Escape clears the ribbon focus, after which
---   the inline edit accepts keystrokes normally.
---
---   We fire a single Escape ~50 ms after the menu click. Don't
---   shorten the delay: too early and Escape gets absorbed by the
---   menu's own dismissal animation, leaving the ribbon still
---   focused. Don't lengthen it past ~100 ms either: the user can
---   already be typing by then, and we'd race them.
---
--- Deliberately inline rather than a helper / config knob. If a
--- second menu-activated inline-edit action ever hits the same
--- ribbon-focus retention, extract to M.dismiss_ribbon_focus() at
--- that point.
+-- The trailing M.dismiss_menu_focus() clears Excel's
+-- ribbon-retained focus so the inline-edit cursor actually
+-- receives the user's keystrokes. See the helper for the why and
+-- timing notes.
 function M.rename_sheet()
   M.applescript([[
     tell application "System Events"
@@ -332,9 +349,7 @@ function M.rename_sheet()
       end tell
     end tell
   ]])
-  hs.timer.doAfter(0.05, function()
-    hs.eventtap.keyStroke({}, "escape", 0)
-  end)
+  M.dismiss_menu_focus()
 end
 
 -- Open Edit > Sheet > Move or Copy Sheet... — Excel's native
@@ -431,60 +446,37 @@ function M.insert_sheet()
   end)
 end
 
--- Delete the active worksheet. We leave `display alerts` at its
--- default `true`, so Excel surfaces its own "Are you sure you want
--- to permanently delete this sheet?" dialog before doing anything
--- destructive — the user presses Return to confirm or
--- Escape/Cancel to abort. We deliberately don't add a Lua-side
--- confirmation; Excel's native dialog is the safety net.
+-- Delete the active worksheet. Routes through Edit > Sheet >
+-- Delete Sheet in the menu bar so Excel surfaces its own "Are you
+-- sure?" confirmation dialog; the user confirms with Return or
+-- cancels with Escape.
 --
--- `delete active sheet` is modal under display-alerts: the
--- AppleScript call blocks until the user dismisses the dialog, so
--- by the time we inspect `result`, the outcome is final.
+-- Why this shape (System Events menu click + dismiss_menu_focus)
+-- rather than `delete active sheet` via AppleScript directly:
+--   The direct AppleScript call did pop the confirmation dialog,
+--   but the dialog opened without keyboard focus — the user's
+--   first Return got eaten until they clicked the dialog or hit
+--   Escape a couple of times. Same ribbon-retained-focus quirk as
+--   rename_sheet, so the same trick applies: drive the action
+--   through the menu bar and trail with a single Escape to clear
+--   the ribbon. By the time the alert dialog finishes rendering,
+--   the responder chain is clean and the dialog inherits first
+--   responder on its own. Enter then activates the default Delete
+--   button.
 --
--- Cancellation: when the user dismisses the confirmation dialog,
--- AppleScript typically reports error -128 ("User cancelled"). That
--- is a normal outcome — we swallow it silently rather than flash a
--- "Delete sheet failed" alert at a user who deliberately bailed.
--- Anything else (e.g. attempting to delete the only sheet in a
--- workbook) still surfaces as a short alert and a full log line.
---
--- Post-action Escape: same cell-selector freeze nudge that
--- M.insert_sheet uses (§5 in Agent/ADD_SHORTCUTS.md). Skipped on
--- the cancellation/error paths since we return early there.
+-- (An earlier attempt synthesised an AX-located mouse click on the
+-- dialog's top heading band; that was sufficient for the
+-- text-field dialogs but not for button-only alerts. The Escape
+-- approach worked in manual testing and replaces it cleanly.)
 function M.delete_sheet()
-  local ok, result = hs.osascript.applescript([[
-    tell application "Microsoft Excel"
-      try
-        delete active sheet
-      on error errMsg number errNum
-        return "ERROR " & errNum & ": " & errMsg
-      end try
-      return "ok"
+  M.applescript([[
+    tell application "System Events"
+      tell process "Microsoft Excel"
+        click menu item "Delete Sheet" of menu 1 of menu item "Sheet" of menu 1 of menu bar item "Edit" of menu bar 1
+      end tell
     end tell
   ]])
-
-  if not ok then
-    if _G.__mme_log then
-      _G.__mme_log("delete_sheet: engine error result=%s", tostring(result))
-    end
-    hs.alert.show("Delete sheet failed (see log)", 1.2)
-    return
-  end
-
-  if type(result) == "string" and result:sub(1, 6) == "ERROR " then
-    if result:find("%-128") then
-      if _G.__mme_log then _G.__mme_log("delete_sheet: cancelled by user") end
-      return
-    end
-    if _G.__mme_log then _G.__mme_log("delete_sheet: %s", result) end
-    hs.alert.show("Delete sheet: " .. result:sub(7), 1.5)
-    return
-  end
-
-  hs.timer.doAfter(0.05, function()
-    hs.eventtap.keyStroke({}, "escape", 0)
-  end)
+  M.dismiss_menu_focus()
 end
 
 ----------------------------------------------------------------------
