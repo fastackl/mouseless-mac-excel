@@ -284,6 +284,75 @@ function M.row_height_dialog()
 end
 
 ----------------------------------------------------------------------
+-- View actions
+----------------------------------------------------------------------
+
+-- Change the active window's zoom in the direction of `delta`,
+-- snapping to a grid of |delta| percentage points and clamped to
+-- [config.zoom_min, config.zoom_max]. Used by the M.zoom_in /
+-- M.zoom_out wrappers below.
+--
+-- Snap behaviour:
+--   - delta > 0 (zoom in): target is the next grid line strictly
+--     ABOVE current. From 117% with step 10 you land on 120%; from
+--     120% you land on 130%.
+--   - delta < 0 (zoom out): target is the next grid line strictly
+--     BELOW current. From 117% with step 10 you land on 110%; from
+--     120% you land on 110%.
+-- The grid is defined by |delta| itself, so changing config.zoom_step
+-- changes the grid live — no separate config knob.
+--
+-- The read is wrapped in try/on error inside AppleScript so a
+-- missing-active-window state (e.g. no workbook open) becomes a
+-- silent no-op rather than a flash alert. The write goes through
+-- M.applescript, so any unexpected write failure does surface.
+function M.zoom_by(delta)
+  local min = config.zoom_min or 50
+  local max = config.zoom_max or 200
+
+  if delta == 0 then return end
+
+  local ok, current = hs.osascript.applescript([[
+    tell application "Microsoft Excel"
+      try
+        return zoom of active window
+      on error errMsg
+        return "ERROR: " & errMsg
+      end try
+    end tell
+  ]])
+
+  local cur = ok and tonumber(current) or nil
+  if not cur then
+    if _G.__mme_log then
+      _G.__mme_log("zoom_by: could not read current zoom (%s)", tostring(current))
+    end
+    return
+  end
+
+  local step = math.abs(delta)
+  local target
+  if delta > 0 then
+    target = math.floor(cur / step) * step + step
+  else
+    target = math.ceil(cur / step) * step - step
+  end
+
+  if target < min then target = min end
+  if target > max then target = max end
+  if target == cur then return end  -- already at the bound in this direction
+
+  M.applescript(string.format([[
+    tell application "Microsoft Excel"
+      set zoom of active window to %d
+    end tell
+  ]], target))
+end
+
+function M.zoom_in()  M.zoom_by( config.zoom_step or 10) end
+function M.zoom_out() M.zoom_by(-(config.zoom_step or 10)) end
+
+----------------------------------------------------------------------
 -- Font actions
 ----------------------------------------------------------------------
 

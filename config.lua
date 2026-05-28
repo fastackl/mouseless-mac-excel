@@ -41,6 +41,20 @@ return {
   -- (the dialog hadn't rendered yet when we went looking).
   dialog_focus_click_delay_seconds = 0.08,
 
+  -- Bounds and step for the Zoom In / Zoom Out shortcuts (Ctrl+Shift+I
+  -- and Ctrl+Shift+J by default). Each press reads Excel's current
+  -- active-window zoom and lands on the next grid line of zoom_step
+  -- in the direction of the press, clamped to [zoom_min, zoom_max].
+  -- All values are integer percentages.
+  --
+  -- Snap behaviour: zoom-in from 117% lands on 120%; from 120% lands
+  -- on 130%. Zoom-out from 117% lands on 110%; from 120% lands on
+  -- 110%. The grid is defined by zoom_step itself, so changing
+  -- zoom_step changes the grid live.
+  zoom_min  = 50,
+  zoom_max  = 200,
+  zoom_step = 10,
+
   -- Font colours that the Cycle Font Color shortcut (Ctrl+Shift+C by
   -- default) walks through, in order. Each entry is a 6-character hex
   -- string (case-insensitive; a leading "#" is tolerated). Pressing
