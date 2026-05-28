@@ -110,22 +110,155 @@ function M.paste_formats()       M.paste_special("paste formats")       end
 function M.paste_column_widths() M.paste_special("paste column widths") end
 
 ----------------------------------------------------------------------
+-- Dialog helpers
+----------------------------------------------------------------------
+
+-- Bring keyboard focus to a freshly opened dialog's first text field
+-- and select its current value, giving the user Windows-style overtype:
+-- open dialog, type new value, press Enter to confirm.
+--
+-- Why this exists:
+--   When a dialog is opened programmatically (e.g. via System Events
+--   menu click), AX reports the text field as AXFocused=true but
+--   AppKit hasn't yet promoted it to first responder, so the user's
+--   first keystroke is eaten settling focus. Setting AXFocused or
+--   AXSelectedTextRange via AX has no effect on the responder chain —
+--   we verified this empirically. The only reliable nudge is a real
+--   synthesised mouse click on the field, which forces AppKit to
+--   update first-responder the same way a hardware click would.
+--
+-- After the click, we set AXSelectedTextRange to cover the full
+-- current value so that typing replaces it rather than appending.
+--
+-- The user's mouse cursor is saved before the click and restored
+-- immediately after, so they don't end up parked on the dialog.
+--
+-- Opt-out via config.dialog_focus_click = false.
+function M.focus_and_select_dialog_field(window_title)
+  if not config.dialog_focus_click then return end
+
+  hs.timer.doAfter(config.dialog_focus_click_delay_seconds, function()
+    local ok, err = pcall(function()
+      local ax = hs.axuielement
+      if not ax then
+        local ok_req, mod = pcall(require, "hs.axuielement")
+        if ok_req then ax = mod end
+      end
+      if not ax then
+        if _G.__mme_log then
+          _G.__mme_log("focus_and_select: hs.axuielement unavailable")
+        end
+        return
+      end
+
+      local app = hs.application.find(config.excel_bundle_id)
+      if not app then return end
+
+      local app_ax = ax.applicationElement(app)
+      if not app_ax then return end
+
+      -- Defensive attribute reader: AX attribute access can throw on
+      -- unexpected element kinds.
+      local function attr(elem, name)
+        local got, val = pcall(function() return elem[name] end)
+        return got and val or nil
+      end
+
+      -- Locate the dialog window by title.
+      local dialog
+      for _, w in ipairs(attr(app_ax, "AXWindows") or {}) do
+        if attr(w, "AXTitle") == window_title then
+          dialog = w
+          break
+        end
+      end
+      if not dialog then
+        if _G.__mme_log then
+          _G.__mme_log("focus_and_select: dialog %q not found (try bumping config.dialog_focus_click_delay_seconds)",
+            tostring(window_title))
+        end
+        return
+      end
+
+      -- Find the first AXTextField in the dialog. All current
+      -- single-field dialogs (Column Width, Row Height, ...) have
+      -- exactly one; if a future dialog has several we'll extend
+      -- this helper to take an index/selector.
+      local field
+      for _, child in ipairs(attr(dialog, "AXChildren") or {}) do
+        if attr(child, "AXRole") == "AXTextField" then
+          field = child
+          break
+        end
+      end
+      if not field then
+        if _G.__mme_log then
+          _G.__mme_log("focus_and_select: AXTextField not found in %q",
+            tostring(window_title))
+        end
+        return
+      end
+
+      -- Resolve the field's screen frame. AXFrame is the common case;
+      -- AXPosition + AXSize is a safety fallback for older AX bridges.
+      local frame = attr(field, "AXFrame")
+      if not frame then
+        local pos  = attr(field, "AXPosition")
+        local size = attr(field, "AXSize")
+        if pos and size then
+          frame = { x = pos.x, y = pos.y, w = size.w, h = size.h }
+        end
+      end
+      if not frame then
+        if _G.__mme_log then
+          _G.__mme_log("focus_and_select: field frame unavailable in %q",
+            tostring(window_title))
+        end
+        return
+      end
+
+      local fw = frame.w or frame.width or 0
+      local fh = frame.h or frame.height or 0
+      local click_point = { x = frame.x + fw / 2, y = frame.y + fh / 2 }
+
+      local original_mouse = hs.mouse.absolutePosition()
+      hs.eventtap.leftClick(click_point)
+      hs.mouse.absolutePosition(original_mouse)
+
+      -- Brief delay so the click has time to traverse AppKit's
+      -- responder chain before we select the field's contents.
+      -- This is an AppKit internal timing constant, not user-tunable.
+      hs.timer.doAfter(0.03, function()
+        -- Best-effort AX-level select-all. On some Mac/Excel
+        -- combinations this drives the field editor's visible
+        -- selection; on others the AX tree records the range but
+        -- the field editor stays cursor-only. We do it anyway, then
+        -- have Cmd+A below for the cases where it doesn't take.
+        pcall(function()
+          local value = tostring(attr(field, "AXValue") or "")
+          field:setAttributeValue("AXSelectedTextRange", { loc = 0, len = #value })
+        end)
+        -- Definitive select-all via the real keyboard pipeline.
+        -- The click above has made the field the first responder,
+        -- so Cmd+A hits the field editor and visibly highlights
+        -- the existing value — typing now replaces it.
+        hs.eventtap.keyStroke({ "cmd" }, "a", 0)
+      end)
+    end)
+
+    if not ok and _G.__mme_log then
+      _G.__mme_log("focus_and_select error: %s", tostring(err))
+    end
+  end)
+end
+
+----------------------------------------------------------------------
 -- Format menu actions
 ----------------------------------------------------------------------
 
--- Open Format > Column > Width... dialog so the user can type a
--- numeric column width.
---
--- Same focus-routing artefact as the paste actions: when a dialog
--- is opened programmatically, the text field doesn't reliably
--- become the first responder before the user starts typing, so the
--- first keystroke is lost. Curiously, sending Escape after the
--- dialog appears does NOT cancel the dialog — instead it gets
--- absorbed by the focus-routing machinery and has the side effect
--- of settling focus on the text field. Same trick as paste_special.
---
--- The 50 ms timer gives the dialog a moment to render so the Escape
--- arrives at the dialog rather than the worksheet behind it.
+-- Open Format > Column > Width... and put the user in position to
+-- type a new width: the existing value is selected, so the first
+-- keystroke replaces it.
 function M.column_width_dialog()
   M.applescript([[
     tell application "System Events"
@@ -134,9 +267,7 @@ function M.column_width_dialog()
       end tell
     end tell
   ]])
-  hs.timer.doAfter(0.05, function()
-    hs.eventtap.keyStroke({}, "escape", 0)
-  end)
+  M.focus_and_select_dialog_field("Column Width")
 end
 
 return M

@@ -204,9 +204,11 @@ end
 If you are not sure of the exact menu label on this Excel version,
 **probe the menu tree first** (see implementation notes).
 
-#### C — System Events click + Escape
+#### C — System Events click + `focus_and_select_dialog_field`
 
-For menu items that open a dialog the user will type into:
+For menu items that open a dialog the user will type into. Use the
+helper rather than re-implementing the focus dance — see
+[the focus-routing note](#focus-routing-artefact) for why.
 
 ```lua
 function M.row_height_dialog()
@@ -217,15 +219,25 @@ function M.row_height_dialog()
       end tell
     end tell
   ]])
-  hs.timer.doAfter(0.05, function()
-    hs.eventtap.keyStroke({}, "escape", 0)
-  end)
+  M.focus_and_select_dialog_field("Row Height")
 end
 ```
 
-The Escape ~50 ms after the click is **not** a no-op or a cancel
-press — see [the focus-routing note](#focus-routing-artefact) below
-for why.
+`M.focus_and_select_dialog_field(window_title)`:
+
+- Waits `config.dialog_focus_click_delay_seconds` for the dialog to
+  render.
+- Locates the dialog by its window title.
+- Finds its first `AXTextField`.
+- Synthesises a mouse click on the field (with mouse position saved
+  and restored so the visible cursor only flickers).
+- Selects the field's existing value so the user can overtype.
+- Is a no-op when `config.dialog_focus_click = false`.
+- Logs to `/tmp/mouseless-mac-excel.log` on failure (dialog not
+  found, field not found, etc.) and otherwise stays silent.
+
+If a future dialog has multiple text fields we'll extend the helper
+to take an index or selector. For now it picks the first.
 
 #### D — Keystroke synthesis
 
@@ -322,24 +334,53 @@ it, arrow keys do nothing on the worksheet.
 window appears, but its text field has not been promoted to "first
 responder", so the user's first keystroke is lost.
 
-**Fix for both:** send a single Escape via `hs.eventtap` ~50 ms after
-the action.
+The two flavours have different fixes — one is unconditional and
+lives inline in the paste actions, the other is centralised in a
+helper and configurable.
 
-For flavour 1, Escape dismisses the overlay and arrow keys come back;
-the source's marching ants are preserved (so you can still paste
-again, like normal Excel).
+**Flavour 1 (paste overlay): unconditional post-paste Escape.**
+After an AppleScript-driven paste, send a single Escape via
+`hs.eventtap` ~50 ms after the action. Escape dismisses the overlay
+and arrow keys come back; the source's marching ants are preserved
+(so you can still paste again, like normal Excel). This shows up
+on every Mac/Excel combination tested, so the Escape is unconditional
+inside `M.paste_special` and not exposed as a config knob.
 
-For flavour 2, in the half-routed state Escape is **absorbed by the
-focus router rather than cancelling the dialog** — it has the side
-effect of settling focus on the text field, after which keystrokes
-work. Yes, this is non-obvious; yes, it works reliably; verified
-manually first by the user, who reported "I hit Escape and the
-dialog stays open and then accepts my keystrokes."
+**Flavour 2 (dialog text field): synthesised mouse click via
+`M.focus_and_select_dialog_field()`.** We tried two approaches before
+landing on the click:
 
-The 50 ms delay matters — too short and the action target hasn't
-rendered; too long and Escape arrives after focus has already been
-routed somewhere else, doing the wrong thing. 50 ms has been the
-sweet spot on every shortcut so far.
+1. *Post-open Escape* — works on some machines (Escape is absorbed
+   by the focus router and settles the field), but on others the
+   dialog renders fast enough that Escape arrives at a fully-focused
+   dialog and just closes it. Unreliable across hardware.
+2. *AX-level focus / selection* — setting `AXFocused = true` and
+   `AXSelectedTextRange` on the field via `hs.axuielement`. We
+   verified empirically that this updates the AX tree (the field
+   reports as focused and the value as selected) but **does not
+   actually promote the field in AppKit's first-responder chain**.
+   The first keystroke still gets eaten.
+
+The only reliable nudge we found is a **real synthesised mouse
+click** at the field's screen frame. A real click bypasses the
+AX→AppKit indirection and forces first-responder the same way a
+hardware click would. We then select the existing value with two
+mechanisms in sequence: first an AX `AXSelectedTextRange` write
+(best-effort; on some machines it drives the visible selection,
+on others the AX tree records the range but the field editor stays
+cursor-only), then a synthesised `Cmd+A` through the real keyboard
+pipeline (definitive — the click has made the field the first
+responder, so `Cmd+A` hits the field editor and visibly highlights
+the existing value). The result is Windows-style overtype: open
+dialog, type new value, press Enter. The user's mouse cursor is
+saved and restored around the click so it doesn't end up parked
+on the dialog.
+
+Gated on `dialog_focus_click` (default `true`), with the open→click
+delay tunable via `dialog_focus_click_delay_seconds` (default 80 ms).
+Dialog-opening actions should call `M.focus_and_select_dialog_field(window_title)`
+rather than re-implementing this — the helper is the only place we
+maintain this knowledge.
 
 ### Marching ants are preserved on purpose
 
@@ -439,6 +480,8 @@ tail -f /tmp/mouseless-mac-excel.log
 | `leader_tap_max_seconds` | Maximum tap duration to enter menu mode. Increase if your taps feel slow. |
 | `menu_idle_timeout_seconds` | How long menu mode waits before silently exiting. |
 | `step_delay_seconds` | Delay between scripted keystrokes inside multi-step `M.sequence()` actions. Bump if Excel dialogs feel slow. |
+| `dialog_focus_click` | When `true` (default), dialog-opening actions synthesise a mouse click on the dialog's text field and select its existing value so typing replaces it (Windows-Excel-style overtype). The cursor briefly flickers to the field and back. Turn off to keep the cursor undisturbed and click into dialogs manually. See the [focus-routing note](#focus-routing-artefact). |
+| `dialog_focus_click_delay_seconds` | Delay (seconds) between opening a dialog and looking it up in the AX tree to click. Default `0.08`. Bump if the log shows `focus_and_select: dialog "..." not found`. |
 | `debug` | When true, shows on-screen alerts and writes `/tmp/mouseless-mac-excel.log`. |
 
 To see the live Hammerspoon console: menu-bar icon → *Console…*.
@@ -458,8 +501,20 @@ To see the live Hammerspoon console: menu-bar icon → *Console…*.
   ants, or a wrong menu path. The full error text is always in the log.
 - **Selector locks (arrow keys do nothing) after my new action.**
   Add the post-action Escape (see flavour 1 of the focus-routing note).
-- **First keystroke is eaten by my new dialog action.** Add the
-  post-action Escape (see flavour 2 of the focus-routing note).
+- **First keystroke is eaten by my new dialog action.** Make sure
+  the action calls `M.focus_and_select_dialog_field("<Window Title>")`
+  after opening the dialog, and that `config.dialog_focus_click` is
+  `true` (it is by default). Tail the log: if you see
+  `focus_and_select: dialog "..." not found`, the dialog hadn't
+  rendered yet when we went looking — bump
+  `config.dialog_focus_click_delay_seconds`.
+- **Selected value isn't replaced when I type.** That's the same
+  helper not having found the field. Same diagnosis as above; check
+  the log for `focus_and_select: AXTextField not found in ...`.
+- **Cursor visibly flickers on every dialog and I'd rather it didn't.**
+  Set `dialog_focus_click = false`. You'll lose overtype UX and the
+  first keystroke into the dialog will be eaten — you'll need to
+  click into the field manually before typing.
 - **macOS keeps prompting for "Hammerspoon wants to control Microsoft
   Excel" or "...System Events".** Allow it once and it will stop. If
   you previously denied it, re-enable it under *System Settings →
