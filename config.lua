@@ -65,6 +65,20 @@ return {
   -- applied instead. Edit freely — order is significant.
   font_color_cycle = { "0433FF", "FF2600", "008F00", "000000" },
 
+  -- Discrete font-size ladder for the Font Size Up / Font Size Down
+  -- shortcuts (Ctrl+Shift+A and Ctrl+Shift+S by default). Each entry is
+  -- a number (points). The list is sorted ascending internally; order
+  -- in this file doesn't matter, but duplicates and non-positives are
+  -- ignored.
+  --
+  -- Behaviour mirrors zoom_in / zoom_out but against this explicit
+  -- ladder rather than a step grid: each press moves the selection's
+  -- font size to the next ladder entry strictly above (up) or below
+  -- (down) the current size, clamping at the top and bottom of the
+  -- ladder (no wrap). From a size between rungs, the press snaps to
+  -- the next rung in the chosen direction.
+  font_size_cycle = { 9, 12, 18, 24 },
+
   -- Fill colours (cell background) that the Cycle Fill Color shortcut
   -- (Ctrl+Shift+V by default) walks through, in order. Each entry is
   -- either a 6-character hex string (case-insensitive; a leading "#"

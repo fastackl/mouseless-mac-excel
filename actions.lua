@@ -668,6 +668,124 @@ function M.cycle_font_color()
   ]], nr, ng, nb))
 end
 
+-- Step the font size of the current selection through the discrete
+-- ladder defined in config.font_size_cycle.
+--
+-- Semantics mirror zoom_in / zoom_out but with a list of explicit sizes
+-- instead of a step grid. `direction` is +1 (step up) or -1 (step down).
+--
+-- Behaviour:
+--   - If the current size is in the ladder, move to the next/previous
+--     entry; clamp at the top/bottom (no wrap).
+--   - If the current size is between ladder entries, snap to the next
+--     entry strictly above (up) or strictly below (down). E.g. with
+--     ladder {9,12,18,24} and current 14: up → 18, down → 12.
+--   - If the current size is below the smallest entry, up → smallest;
+--     down → smallest (clamped).
+--   - If the current size is above the largest entry, down → largest;
+--     up → largest (clamped).
+--
+-- The AppleScript form for read/write deliberately uses a `tell font
+-- object of <range>` block. Setting `font size` directly on the
+-- selection is rejected on some Excel builds with -10006; the block
+-- form is accepted on every build we've tested.
+function M.step_font_size(direction)
+  if direction ~= 1 and direction ~= -1 then return end
+
+  local cycle = config.font_size_cycle or {}
+  if #cycle == 0 then
+    if _G.__mme_log then
+      _G.__mme_log("step_font_size: config.font_size_cycle is empty")
+    end
+    return
+  end
+
+  -- Normalise to a sorted ascending ladder of unique positive numbers.
+  local seen, ladder = {}, {}
+  for _, s in ipairs(cycle) do
+    local n = tonumber(s)
+    if n and n > 0 and not seen[n] then
+      seen[n] = true
+      ladder[#ladder + 1] = n
+    elseif (not n or n <= 0) and _G.__mme_log then
+      _G.__mme_log("step_font_size: ignoring invalid entry %q", tostring(s))
+    end
+  end
+  table.sort(ladder)
+  if #ladder == 0 then
+    if _G.__mme_log then
+      _G.__mme_log("step_font_size: no valid entries in config.font_size_cycle")
+    end
+    return
+  end
+
+  local ok_read, result = hs.osascript.applescript([[
+    tell application "Microsoft Excel"
+      try
+        tell font object of (cell 1 of selection)
+          return font size as text
+        end tell
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+    end tell
+  ]])
+
+  local current
+  if ok_read and type(result) == "number" then
+    current = result
+  elseif ok_read and type(result) == "string" and not result:find("^ERROR ") then
+    current = tonumber(result)
+  end
+
+  local min, max = ladder[1], ladder[#ladder]
+  local target
+
+  if not current then
+    -- Couldn't read; behave like a first press at the bound for the
+    -- chosen direction so the user still gets a defined outcome.
+    target = (direction > 0) and min or max
+  elseif direction > 0 then
+    for _, n in ipairs(ladder) do
+      if n > current + 0.01 then target = n; break end
+    end
+    target = target or max  -- already at or above the top
+  else
+    for i = #ladder, 1, -1 do
+      if ladder[i] < current - 0.01 then target = ladder[i]; break end
+    end
+    target = target or min  -- already at or below the bottom
+  end
+
+  if current and math.abs(target - current) < 0.01 then return end
+
+  local ok_set, set_result = hs.osascript.applescript(string.format([[
+    tell application "Microsoft Excel"
+      try
+        tell font object of selection
+          set font size to %s
+        end tell
+        return "ok"
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+    end tell
+  ]], tostring(target)))
+
+  local failed = (not ok_set)
+    or (type(set_result) == "string" and set_result:sub(1, 6) == "ERROR ")
+  if failed then
+    local detail = (type(set_result) == "string") and set_result or "engine error"
+    if _G.__mme_log then
+      _G.__mme_log("step_font_size: %s", detail)
+    end
+    hs.alert.show("Font size change failed (see log)", 1.5)
+  end
+end
+
+function M.font_size_up()   M.step_font_size( 1) end
+function M.font_size_down() M.step_font_size(-1) end
+
 ----------------------------------------------------------------------
 -- Fill actions
 ----------------------------------------------------------------------

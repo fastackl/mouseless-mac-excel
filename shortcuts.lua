@@ -30,6 +30,8 @@ return {
   combos = {
     { mods = { "cmd", "shift" },  key = "v", action = "paste_values",     desc = "Paste Values" },
     { mods = { "ctrl", "shift" }, key = "c", action = "cycle_font_color", desc = "Cycle font color" },
+    { mods = { "ctrl", "shift" }, key = "a", action = "font_size_up",     desc = "Font size up" },
+    { mods = { "ctrl", "shift" }, key = "s", action = "font_size_down",   desc = "Font size down" },
     { mods = { "ctrl", "shift" }, key = "v", action = "cycle_fill_color", desc = "Cycle fill color" },
     { mods = { "ctrl", "shift" }, key = "i", action = "zoom_in",          desc = "Zoom in" },
     { mods = { "ctrl", "shift" }, key = "j", action = "zoom_out",         desc = "Zoom out" },
