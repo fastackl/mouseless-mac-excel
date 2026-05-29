@@ -152,7 +152,7 @@ remove a shortcut.
 | `o c w` | `column_width_dialog` | Format > Column > Width… (opens dialog) |
 | `o r e` | `row_height_dialog` | Format > Row > Height… (opens dialog) |
 | `o h r` | `rename_sheet` | Format > Sheet > Rename (inline edit on the sheet tab) |
-| `o h m` | `move_sheet_dialog` | Edit > Sheet > Move or Copy… (opens dialog) |
+| `o h m` | `move_sheet_dialog` | Edit > Sheet > Move or Copy… (focuses Before sheet list, first row) |
 | `o w s` | `insert_sheet` | Insert a new worksheet before the active sheet (Mac Excel default) |
 | `e l` | `delete_sheet` | Delete the active worksheet (Excel shows its native confirmation dialog first) |
 | `b o` | `border_dotted` | Reapply current outer borders as dash; light vs heavy weight picks the dashed preset |
@@ -579,7 +579,7 @@ tail -f /tmp/mouseless-mac-excel.log
 | `leader_tap_max_seconds` | Maximum tap duration to enter menu mode. Increase if your taps feel slow. |
 | `menu_idle_timeout_seconds` | How long menu mode waits before silently exiting. |
 | `step_delay_seconds` | Delay between scripted keystrokes inside multi-step `M.sequence()` actions. Bump if Excel dialogs feel slow. |
-| `dialog_focus_click` | When `true` (default), dialog-opening actions synthesise a mouse click on the dialog's text field and select its existing value so typing replaces it (Windows-Excel-style overtype). The cursor briefly flickers to the field and back. Turn off to keep the cursor undisturbed and click into dialogs manually. See the [focus-routing note](#focus-routing-artefact). |
+| `dialog_focus_click` | When `true` (default), dialog-opening actions synthesise a mouse click on the control you need next: text fields get select-all for overtype; Move or Copy gets the Before sheet list on the first row for arrow keys. The cursor briefly flickers to the target and back. Turn off to keep the cursor undisturbed and focus dialogs manually. See the [focus-routing note](#focus-routing-artefact). |
 | `dialog_focus_click_delay_seconds` | Delay (seconds) between opening a dialog and looking it up in the AX tree to click. Default `0.08`. Bump if the log shows `focus_and_select: dialog "..." not found`. |
 | `font_color_cycle` | Ordered list of 6-character hex strings the `cycle_font_color` action walks through. Edit to taste — order is significant. Leading `#` tolerated, case-insensitive. |
 | `font_size_cycle` | Font-size ladder (points) the `font_size_up` / `font_size_down` actions step through. Sorted ascending internally; order in the file doesn't matter. Each press moves to the next rung in the chosen direction and clamps at the ends. |

@@ -271,6 +271,154 @@ function M.focus_and_select_dialog_field(window_title)
   end)
 end
 
+-- Bring keyboard focus to a list/outline/table inside a dialog (e.g.
+-- Move or Copy's "Before sheet" pane) via a synthesised click, then
+-- optionally jump to the first row with Home. Same AppKit quirk as
+-- text fields: AXFocused on the list is not enough for arrow keys.
+--
+-- opts.select_first (default true): send Home after the click so the
+-- highlight starts on the first sheet name, not wherever Excel left it.
+--
+-- Opt-out via config.dialog_focus_click (shared with text-field dialogs).
+function M.focus_dialog_list(window_title, opts)
+  if not config.dialog_focus_click then return end
+  opts = opts or {}
+  local select_first = opts.select_first ~= false
+
+  hs.timer.doAfter(config.dialog_focus_click_delay_seconds, function()
+    local ok, err = pcall(function()
+      local ax = hs.axuielement
+      if not ax then
+        local ok_req, mod = pcall(require, "hs.axuielement")
+        if ok_req then ax = mod end
+      end
+      if not ax then
+        if _G.__mme_log then
+          _G.__mme_log("focus_dialog_list: hs.axuielement unavailable")
+        end
+        return
+      end
+
+      local app = hs.application.find(config.excel_bundle_id)
+      if not app then return end
+
+      local app_ax = ax.applicationElement(app)
+      if not app_ax then return end
+
+      local function attr(elem, name)
+        local got, val = pcall(function() return elem[name] end)
+        return got and val or nil
+      end
+
+      local dialog
+      for _, w in ipairs(attr(app_ax, "AXWindows") or {}) do
+        if attr(w, "AXTitle") == window_title then
+          dialog = w
+          break
+        end
+      end
+      if not dialog then
+        if _G.__mme_log then
+          _G.__mme_log(
+            "focus_dialog_list: dialog %q not found (try bumping config.dialog_focus_click_delay_seconds)",
+            tostring(window_title))
+        end
+        return
+      end
+
+      local LIST_ROLES = {
+        ["AXList"] = true,
+        ["AXOutline"] = true,
+        ["AXTable"] = true,
+      }
+
+      local function element_area(elem)
+        local frame = attr(elem, "AXFrame")
+        if not frame then
+          local pos  = attr(elem, "AXPosition")
+          local size = attr(elem, "AXSize")
+          if pos and size then
+            frame = { x = pos.x, y = pos.y, w = size.w, h = size.h }
+          end
+        end
+        if not frame then return 0 end
+        local fw = frame.w or frame.width or 0
+        local fh = frame.h or frame.height or 0
+        return fw * fh
+      end
+
+      -- Move or Copy has a pop-up for "To book" and a tall list for
+      -- "Before sheet"; pick the largest list-like control in the tree.
+      local list, best_area = nil, 0
+      local function walk(elem)
+        local role = attr(elem, "AXRole")
+        if role and LIST_ROLES[role] then
+          local area = element_area(elem)
+          if area > best_area then
+            list, best_area = elem, area
+          end
+        end
+        for _, child in ipairs(attr(elem, "AXChildren") or {}) do
+          walk(child)
+        end
+      end
+      walk(dialog)
+
+      if not list then
+        if _G.__mme_log then
+          _G.__mme_log("focus_dialog_list: list not found in %q",
+            tostring(window_title))
+        end
+        return
+      end
+
+      local function click_center(elem)
+        local frame = attr(elem, "AXFrame")
+        if not frame then
+          local pos  = attr(elem, "AXPosition")
+          local size = attr(elem, "AXSize")
+          if pos and size then
+            frame = { x = pos.x, y = pos.y, w = size.w, h = size.h }
+          end
+        end
+        if not frame then return false end
+        local fw = frame.w or frame.width or 0
+        local fh = frame.h or frame.height or 0
+        local click_point = { x = frame.x + fw / 2, y = frame.y + fh / 2 }
+        local original_mouse = hs.mouse.absolutePosition()
+        hs.eventtap.leftClick(click_point)
+        hs.mouse.absolutePosition(original_mouse)
+        return true
+      end
+
+      -- Prefer clicking the first row so selection and focus align.
+      local target = list
+      local rows = attr(list, "AXRows") or attr(list, "AXVisibleRows")
+      if type(rows) == "table" and #rows > 0 then
+        target = rows[1]
+      end
+
+      if not click_center(target) then
+        if _G.__mme_log then
+          _G.__mme_log("focus_dialog_list: could not resolve click target in %q",
+            tostring(window_title))
+        end
+        return
+      end
+
+      if select_first then
+        hs.timer.doAfter(0.03, function()
+          hs.eventtap.keyStroke({}, "home", 0)
+        end)
+      end
+    end)
+
+    if not ok and _G.__mme_log then
+      _G.__mme_log("focus_dialog_list error: %s", tostring(err))
+    end
+  end)
+end
+
 -- After a System Events menu-bar click, macOS leaves keyboard focus
 -- parked on Excel's ribbon strip even though the downstream control
 -- (inline-edit cursor, modal dialog, ...) is the logical target.
@@ -354,10 +502,9 @@ end
 
 -- Open Edit > Sheet > Move or Copy Sheet... — Excel's native
 -- "Move or Copy" dialog where the user picks a destination workbook
--- and target position. The dialog's controls are dropdowns and
--- checkboxes (no text field for typing), so we don't need
--- M.focus_and_select_dialog_field — once the dialog is visible the
--- user navigates it with Tab and arrow keys natively.
+-- and target position. No text field to overtype; we nudge focus into
+-- the "Before sheet" list and select the first row so arrow keys work
+-- without reaching for the mouse (same click trick as Column Width).
 --
 -- Path note: Windows Excel keeps Move or Copy under Format > Sheet;
 -- Mac Excel keeps it under Edit > Sheet. The trigger letters are
@@ -376,6 +523,7 @@ function M.move_sheet_dialog()
       end tell
     end tell
   ]])
+  M.focus_dialog_list("Move or Copy")
 end
 
 -- Insert a new worksheet via Excel's AppleScript dictionary.

@@ -18,11 +18,10 @@ return {
   -- Bump this up if Excel feels slow to open dialogs on your machine.
   step_delay_seconds = 0.18,
 
-  -- When true, dialog-opening actions that pre-fill a numeric value
-  -- (e.g. Column Width) will synthesise a mouse click on the dialog's
-  -- text field and select the existing value, so the user can type a
-  -- new value and have it replace the old one — matching Windows
-  -- Excel's overtype UX.
+  -- When true, dialog-opening actions synthesise a mouse click on the
+  -- control you need next: text fields (Column Width, Row Height) get
+  -- select-all for overtype; Move or Copy gets the "Before sheet" list
+  -- with the first row selected for arrow-key navigation.
   --
   -- This works around an AppKit quirk where a programmatically opened
   -- dialog reports AXFocused=true on its text field but hasn't yet
