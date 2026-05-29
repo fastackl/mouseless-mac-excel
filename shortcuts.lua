@@ -23,7 +23,7 @@ return {
     { keys = { "o", "r", "e" }, action = "row_height_dialog",   desc = "Format > Row > Height..." },
     { keys = { "o", "h", "r" }, action = "rename_sheet",        desc = "Format > Sheet > Rename" },
     { keys = { "o", "h", "m" }, action = "move_sheet_dialog",   desc = "Edit > Sheet > Move or Copy..." },
-    { keys = { "o", "w", "s" }, action = "insert_sheet",        desc = "Insert new sheet (after active)" },
+    { keys = { "o", "w", "s" }, action = "insert_sheet",        desc = "Insert new sheet (before active, Mac default)" },
     { keys = { "e", "l" },      action = "delete_sheet",        desc = "Delete active sheet (confirms)" },
     { keys = { "b", "o" },      action = "border_dotted",       desc = "Reapply borders as dash (light/heavy by weight)" },
   },
@@ -39,7 +39,7 @@ return {
     { mods = { "ctrl", "shift" }, key = "i", action = "zoom_in",          desc = "Zoom in" },
     { mods = { "ctrl", "shift" }, key = "j", action = "zoom_out",         desc = "Zoom out" },
     { mods = { "ctrl" }, key = "space", action = "select_column", desc = "Select current column" },
-    { mods = { "shift", "alt" },   key = "down",  action = "next_sheet",    desc = "Activate next sheet" },
-    { mods = { "shift", "alt" },   key = "up",    action = "prev_sheet",    desc = "Activate previous sheet" },
+    { mods = { "alt" },   key = "down",  action = "next_sheet",    desc = "Activate next sheet" },
+    { mods = { "alt" },   key = "up",    action = "prev_sheet",    desc = "Activate previous sheet" },
   },
 }

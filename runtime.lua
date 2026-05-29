@@ -209,11 +209,15 @@ local function build_combos(combos, actions)
     else
       local desc = c.desc or c.action
       local hk = hs.hotkey.new(c.mods or {}, c.key, function()
-        alert(desc, 0.4)
-        local ok, err = pcall(fn)
+        local ok, ret = pcall(fn)
         if not ok then
-          log("ERROR running action: " .. tostring(err))
-          hs.alert.show("Action error: " .. tostring(err), 1.5)
+          log("ERROR running action: " .. tostring(ret))
+          hs.alert.show("Action error: " .. tostring(ret), 1.5)
+        elseif type(ret) == "string" and ret ~= "" then
+          -- Action returned a user-facing label (e.g. "thin top").
+          hs.alert.show(ret, 0.5)
+        else
+          alert(desc, 0.4)
         end
       end)
       table.insert(hotkeys, hk)

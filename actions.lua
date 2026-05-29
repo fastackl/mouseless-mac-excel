@@ -378,30 +378,14 @@ function M.move_sheet_dialog()
   ]])
 end
 
--- Insert a new worksheet immediately after the currently active
--- sheet, leaving the new sheet as the active one (matching the UX
--- of clicking the "+" tab button next to your current sheet).
+-- Insert a new worksheet via Excel's AppleScript dictionary.
 --
--- Goes through Excel's AppleScript dictionary rather than the
--- Insert menu — no menu structure to break, no dialog to focus,
--- no ribbon-retention quirk.
---
--- Sequence:
---   1. Capture `active sheet` BEFORE creating the new sheet — `make`
---      activates the new sheet, so a post-make reference to
---      "active sheet" would resolve to the new sheet itself, not
---      the user's previous one.
---   2. `make new worksheet at active workbook`. Excel requires the
---      explicit `at` location; the bare form, `at end of sheets`,
---      and `at after active sheet` all reject with -50 Parameter
---      error on the Excel version we tested.
---   3. `move newSheet to after oldActive` to land it next to the
---      user's original sheet rather than at Excel's default.
---
--- Each call is wrapped in its own try/on error so a future Excel
--- change to any one of them produces a labelled error in the log
--- rather than another opaque "Parameter error". See the README
--- section "Extracting AppleScript errors" for the broader pattern.
+-- On Mac Excel, `make new worksheet at active workbook` inserts
+-- immediately *before* the active sheet tab and activates the new
+-- sheet — that is native behaviour; repositioning it after the
+-- previous sheet is not reliable via AppleScript on the builds
+-- we've tested (`move … to after` and `at after active sheet`
+-- both fail with parameter errors).
 --
 -- Post-action Escape clears the same arrow-key-eating cell selector
 -- freeze we saw with paste actions; same 50 ms timing.
@@ -409,24 +393,11 @@ function M.insert_sheet()
   local ok, result = hs.osascript.applescript([[
     tell application "Microsoft Excel"
       try
-        set oldActive to active sheet
+        make new worksheet at active workbook
+        return "ok"
       on error errMsg number errNum
-        return "ERROR step1 (get active sheet) " & errNum & ": " & errMsg
+        return "ERROR " & errNum & ": " & errMsg
       end try
-
-      try
-        set newSheet to make new worksheet at active workbook
-      on error errMsg number errNum
-        return "ERROR step2 (make new worksheet at active workbook) " & errNum & ": " & errMsg
-      end try
-
-      try
-        move newSheet to after oldActive
-      on error errMsg number errNum
-        return "ERROR step3 (move newSheet to after oldActive) " & errNum & ": " & errMsg
-      end try
-
-      return "ok"
     end tell
   ]])
 
@@ -798,7 +769,7 @@ function M.font_size_down() M.step_font_size(-1) end
 -- placement in the cycle (top only, left only, right only, or full
 -- outline). Placement detection reads the first selected cell; if the
 -- pattern is not recognised, the first cycle entry is applied.
-function M.cycle_border(weight)
+function M.cycle_border(weight, weight_label)
   local placements = config.border_placement_cycle or {}
   local valid = { top = true, left = true, right = true, outline = true }
   local cycle_norm = {}
@@ -814,10 +785,14 @@ function M.cycle_border(weight)
     if _G.__mme_log then
       _G.__mme_log("cycle_border: config.border_placement_cycle is empty")
     end
-    return
+    return nil
   end
 
   local weight_as = tostring(weight or config.border_weight_normal or "thin"):lower()
+  local label = tostring(weight_label or weight_as):lower()
+  if label ~= "thin" and label ~= "thick" then
+    label = (weight_as == "medium" or weight_as == "thick") and "thick" or "thin"
+  end
   local allowed_weight = { hairline = true, thin = true, medium = true, thick = true }
   if not allowed_weight[weight_as] then
     if _G.__mme_log then
@@ -894,7 +869,7 @@ function M.cycle_border(weight)
       if _G.__mme_log then
         _G.__mme_log("cycle_border: unknown placement %q", tostring(next_placement))
       end
-      return
+      return nil
     end
     apply_block = string.format([[
           set b to get border which border %s
@@ -935,15 +910,18 @@ function M.cycle_border(weight)
       _G.__mme_log("cycle_border: %s", detail)
     end
     hs.alert.show("Border change failed (see log)", 1.5)
+    return nil
   end
+
+  return label .. " " .. next_placement
 end
 
 function M.cycle_border_thin()
-  M.cycle_border(config.border_weight_normal or "thin")
+  return M.cycle_border(config.border_weight_normal or "thin", "thin")
 end
 
 function M.cycle_border_thick()
-  M.cycle_border(config.border_weight_thick or "medium")
+  return M.cycle_border(config.border_weight_thick or "medium", "thick")
 end
 
 -- Reapply whatever outer borders the selection already has as dashed

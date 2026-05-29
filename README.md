@@ -153,7 +153,7 @@ remove a shortcut.
 | `o r e` | `row_height_dialog` | Format > Row > Height… (opens dialog) |
 | `o h r` | `rename_sheet` | Format > Sheet > Rename (inline edit on the sheet tab) |
 | `o h m` | `move_sheet_dialog` | Edit > Sheet > Move or Copy… (opens dialog) |
-| `o w s` | `insert_sheet` | Insert a new worksheet immediately after the active sheet |
+| `o w s` | `insert_sheet` | Insert a new worksheet before the active sheet (Mac Excel default) |
 | `e l` | `delete_sheet` | Delete the active worksheet (Excel shows its native confirmation dialog first) |
 | `b o` | `border_dotted` | Reapply current outer borders as dash; light vs heavy weight picks the dashed preset |
 
