@@ -171,8 +171,10 @@ remove a shortcut.
 | `Ctrl+Shift+I` | `zoom_in` | Zoom in by `config.zoom_step` (clamped to `zoom_max`) |
 | `Ctrl+Shift+J` | `zoom_out` | Zoom out by `config.zoom_step` (clamped to `zoom_min`) |
 | `Ctrl+Shift+Space` | `select_column` | Select the entire column(s) covered by the current selection |
-| `Shift+Opt+Down` | `next_sheet` | Activate the next sheet in the workbook (no wrap at the end) |
-| `Shift+Opt+Up` | `prev_sheet` | Activate the previous sheet in the workbook (no wrap at the start) |
+| `Opt+Down` | `next_sheet` | Activate the next sheet in the workbook (no wrap at the end) |
+| `Opt+Up` | `prev_sheet` | Activate the previous sheet in the workbook (no wrap at the start) |
+| `Shift+Opt+Down` | `expand_sheet_selection_next` | Grow/shrink the sheet-tab group toward the next sheet. Like Shift+Arrow: the active sheet is a fixed anchor and the lead edge moves one tab forward (extends the group, or retracts it back toward the anchor if it was extended the other way) |
+| `Shift+Opt+Up` | `expand_sheet_selection_prev` | Same, moving the lead edge toward the previous sheet |
 
 ---
 
@@ -592,6 +594,7 @@ tail -f /tmp/mouseless-mac-excel.log
 | `border_dotted_line_style` | Line style for `border_dotted` (`Alt,B,O`). Default `dash`. |
 | `border_dotted_weight_light` / `border_dotted_weight_heavy` | Target weights for edges that were hairline/thin vs medium/thick before the shortcut runs. Defaults: `thin` / `medium`. |
 | `zoom_min` / `zoom_max` / `zoom_step` | Lower bound, upper bound, and step (all integer percentages) for `zoom_in` / `zoom_out`. Defaults: `50` / `200` / `10`. Snap-to-step: zoom-in from 117% lands on 120%, from 120% lands on 130%. |
+| `sheet_group_shift_click_gap_seconds` | Gap between the synthetic mouse-down and mouse-up when `expand_sheet_selection_*` (`Shift+Opt+Down/Up`) Shift-clicks an adjacent sheet tab. Default `0.04`. Bump slightly if the tab group doesn't grow reliably. |
 | `debug` | When true, shows on-screen alerts and writes `/tmp/mouseless-mac-excel.log`. |
 
 To see the live Hammerspoon console: menu-bar icon → *Console…*.

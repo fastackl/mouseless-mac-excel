@@ -1523,4 +1523,138 @@ end
 function M.next_sheet() M.send({ "alt" }, "right") end
 function M.prev_sheet() M.send({ "alt" }, "left")  end
 
+----------------------------------------------------------------------
+-- Expand the selected-sheet group (group adjacent worksheets)
+----------------------------------------------------------------------
+
+-- AppleScript can read `selected sheets` but not write a tab group on
+-- current Mac builds; the reliable path is a Shift-click on the target
+-- tab (frame from the AX tree, never hardcoded coordinates). Group
+-- extent comes from AppleScript (AX "Selected," only marks the active
+-- tab); sheet count and tab frame from AX "Sheet N of M" labels.
+--
+-- Like Shift+Arrow: active sheet is the anchor, each press moves the
+-- lead edge (the non-anchor endpoint) one tab in the pressed direction.
+local function expand_sheet_selection(direction)
+  local ok, result = M.applescript([[
+    tell application "Microsoft Excel"
+      try
+        set selSheets to selected sheets of active window
+        set lo to index of (item 1 of selSheets)
+        set hi to lo
+        repeat with s in selSheets
+          set i to index of s
+          if i < lo then set lo to i
+          if i > hi then set hi to i
+        end repeat
+        set a to index of active sheet
+        return (a as string) & "," & (lo as string) & "," & (hi as string)
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+    end tell
+  ]])
+  if not ok then return end
+  local active, lo, hi = tostring(result):match("^(%d+),(%d+),(%d+)$")
+  active, lo, hi = tonumber(active), tonumber(lo), tonumber(hi)
+  if not (active and lo and hi) then
+    if _G.__mme_log then
+      _G.__mme_log("expand_sheet_selection: unexpected group read %q", tostring(result))
+    end
+    return
+  end
+
+  local lead
+  if lo == hi then
+    lead = active
+  elseif active == lo then
+    lead = hi
+  elseif active == hi then
+    lead = lo
+  else
+    lead = (direction == "next") and hi or lo
+  end
+
+  local target_pos = (direction == "next") and (lead + 1) or (lead - 1)
+  if target_pos < 1 then
+    hs.alert.show("Already at first sheet", 1.0)
+    return
+  end
+
+  local ax = hs.axuielement
+  if not ax then
+    local ok_req, mod = pcall(require, "hs.axuielement")
+    if ok_req then ax = mod end
+  end
+  if not ax then
+    if _G.__mme_log then _G.__mme_log("expand_sheet_selection: hs.axuielement unavailable") end
+    hs.alert.show("Accessibility unavailable", 1.2)
+    return
+  end
+
+  local app = hs.application.find(config.excel_bundle_id)
+  if not app then return end
+  local app_ax = ax.applicationElement(app)
+  if not app_ax then return end
+
+  -- AX attribute access can throw on unexpected element kinds.
+  local function attr(elem, name)
+    local got, val = pcall(function() return elem[name] end)
+    return got and val or nil
+  end
+
+  local total, target_frame
+  local function walk(elem)
+    if target_frame and total then return end
+    if attr(elem, "AXRole") == "AXButton" then
+      local desc = tostring(attr(elem, "AXDescription") or "")
+      local pos, m = desc:match("Sheet (%d+) of (%d+)")
+      if pos then
+        total = total or tonumber(m)
+        if tonumber(pos) == target_pos then
+          local frame = attr(elem, "AXFrame")
+          if not frame then
+            local p, s = attr(elem, "AXPosition"), attr(elem, "AXSize")
+            if p and s then frame = { x = p.x, y = p.y, w = s.w, h = s.h } end
+          end
+          target_frame = frame
+        end
+      end
+    end
+    for _, child in ipairs(attr(elem, "AXChildren") or {}) do
+      walk(child)
+    end
+  end
+  for _, w in ipairs(attr(app_ax, "AXWindows") or {}) do
+    walk(w)
+  end
+
+  if total and target_pos > total then
+    hs.alert.show("Already at last sheet", 1.0)
+    return
+  end
+
+  if not target_frame then
+    if _G.__mme_log then
+      _G.__mme_log("expand_sheet_selection: target tab %d not found/visible", target_pos)
+    end
+    hs.alert.show("Adjacent sheet tab not visible", 1.2)
+    return
+  end
+
+  local f = target_frame
+  local fw = f.w or f.width or 0
+  local fh = f.h or f.height or 0
+  local point = { x = f.x + fw / 2, y = f.y + fh / 2 }
+
+  -- Shift flag only on the synthesised click (user may hold Alt+Shift).
+  local e = hs.eventtap.event
+  e.newMouseEvent(e.types.leftMouseDown, point):setFlags({ shift = true }):post()
+  hs.timer.usleep(math.floor(config.sheet_group_shift_click_gap_seconds * 1e6))
+  e.newMouseEvent(e.types.leftMouseUp, point):setFlags({ shift = true }):post()
+end
+
+function M.expand_sheet_selection_next() expand_sheet_selection("next") end
+function M.expand_sheet_selection_prev() expand_sheet_selection("prev") end
+
 return M

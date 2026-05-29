@@ -41,5 +41,7 @@ return {
     { mods = { "ctrl" }, key = "space", action = "select_column", desc = "Select current column" },
     { mods = { "alt" },   key = "down",  action = "next_sheet",    desc = "Activate next sheet" },
     { mods = { "alt" },   key = "up",    action = "prev_sheet",    desc = "Activate previous sheet" },
+    { mods = { "alt", "shift" }, key = "down", action = "expand_sheet_selection_next", desc = "Expand sheet selection to next sheet" },
+    { mods = { "alt", "shift" }, key = "up",   action = "expand_sheet_selection_prev", desc = "Expand sheet selection to previous sheet" },
   },
 }

@@ -128,6 +128,13 @@ return {
   border_dotted_weight_light = "thin",
   border_dotted_weight_heavy = "medium",
 
+  -- Gap (seconds) between the synthetic mouse-down and mouse-up when the
+  -- Expand Sheet Selection shortcuts (Alt+Shift+Down / Alt+Shift+Up)
+  -- Shift-click an adjacent sheet tab to grow the tab group. A few
+  -- milliseconds is enough for Excel to register a real click; too
+  -- short and Excel can treat it as a press that never released.
+  sheet_group_shift_click_gap_seconds = 0.04,
+
   -- When true, show small on-screen alerts as you type a sequence and
   -- log every action to the Hammerspoon console. Helpful while we
   -- iterate; turn off once shortcuts feel stable.
