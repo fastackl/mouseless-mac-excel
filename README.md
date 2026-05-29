@@ -155,6 +155,7 @@ remove a shortcut.
 | `o h m` | `move_sheet_dialog` | Edit > Sheet > Move or Copy… (opens dialog) |
 | `o w s` | `insert_sheet` | Insert a new worksheet immediately after the active sheet |
 | `e l` | `delete_sheet` | Delete the active worksheet (Excel shows its native confirmation dialog first) |
+| `b o` | `border_dotted` | Reapply current outer borders as dash; light vs heavy weight picks the dashed preset |
 
 **Single combos** — bound while Excel is frontmost:
 
@@ -585,6 +586,8 @@ tail -f /tmp/mouseless-mac-excel.log
 | `fill_color_cycle` | Ordered list of fill entries the `cycle_fill_color` action walks through. Each entry is either a 6-character hex string (leading `#` tolerated, case-insensitive) or the literal `"none"` to clear fill. |
 | `border_placement_cycle` | Border placements the `cycle_border_thin` / `cycle_border_thick` actions walk through: `"top"`, `"left"`, `"right"`, `"outline"`. Order is significant. |
 | `border_weight_normal` / `border_weight_thick` | Excel AppleScript border-weight names for the thin (`Ctrl+Shift+B`) and thick (`Ctrl+Shift+T`) shortcuts. Defaults: `thin` / `medium`. |
+| `border_dotted_line_style` | Line style for `border_dotted` (`Alt,B,O`). Default `dash`. |
+| `border_dotted_weight_light` / `border_dotted_weight_heavy` | Target weights for edges that were hairline/thin vs medium/thick before the shortcut runs. Defaults: `thin` / `medium`. |
 | `zoom_min` / `zoom_max` / `zoom_step` | Lower bound, upper bound, and step (all integer percentages) for `zoom_in` / `zoom_out`. Defaults: `50` / `200` / `10`. Snap-to-step: zoom-in from 117% lands on 120%, from 120% lands on 130%. |
 | `debug` | When true, shows on-screen alerts and writes `/tmp/mouseless-mac-excel.log`. |
 

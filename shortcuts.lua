@@ -25,6 +25,7 @@ return {
     { keys = { "o", "h", "m" }, action = "move_sheet_dialog",   desc = "Edit > Sheet > Move or Copy..." },
     { keys = { "o", "w", "s" }, action = "insert_sheet",        desc = "Insert new sheet (after active)" },
     { keys = { "e", "l" },      action = "delete_sheet",        desc = "Delete active sheet (confirms)" },
+    { keys = { "b", "o" },      action = "border_dotted",       desc = "Reapply borders as dash (light/heavy by weight)" },
   },
 
   combos = {

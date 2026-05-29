@@ -946,6 +946,101 @@ function M.cycle_border_thick()
   M.cycle_border(config.border_weight_thick or "medium")
 end
 
+-- Reapply whatever outer borders the selection already has as dashed
+-- lines. Reads which edges are active and each edge's weight from the
+-- first selected cell, then applies the same edges on the whole
+-- selection: lighter weights (hairline / thin) use
+-- config.border_dotted_weight_light; medium / thick use
+-- config.border_dotted_weight_heavy. Both share
+-- config.border_dotted_line_style (dash by default).
+function M.border_dotted()
+  local line_style = tostring(config.border_dotted_line_style or "dash"):lower()
+  local weight_light = tostring(config.border_dotted_weight_light or "thin"):lower()
+  local weight_heavy = tostring(config.border_dotted_weight_heavy or "medium"):lower()
+  local allowed_style = {
+    continuous = true, dash = true, ["dash dot"] = true,
+    ["dash dot dot"] = true, dot = true, double = true,
+    ["slant dash dot"] = true,
+  }
+  local allowed_weight = { hairline = true, thin = true, medium = true, thick = true }
+  if not allowed_style[line_style] then
+    if _G.__mme_log then
+      _G.__mme_log("border_dotted: invalid line style %q, using dash", line_style)
+    end
+    line_style = "dash"
+  end
+  if not allowed_weight[weight_light] then
+    if _G.__mme_log then
+      _G.__mme_log("border_dotted: invalid light weight %q, using thin", weight_light)
+    end
+    weight_light = "thin"
+  end
+  if not allowed_weight[weight_heavy] then
+    if _G.__mme_log then
+      _G.__mme_log("border_dotted: invalid heavy weight %q, using medium", weight_heavy)
+    end
+    weight_heavy = "medium"
+  end
+
+  local ok, result, descriptor = hs.osascript.applescript(string.format([[
+    tell application "Microsoft Excel"
+      try
+        set specs to {}
+        tell cell 1 of selection
+          repeat with wb in {edge top, edge left, edge right, edge bottom}
+            set b to get border which border wb
+            if line style of b is not line style none then
+              set end of specs to {wb, weight of b as text}
+            end if
+          end repeat
+        end tell
+        if (count of specs) is 0 then return "none"
+        tell selection
+          repeat with spec in specs
+            set wb to item 1 of spec
+            set wTxt to item 2 of spec
+            set b to get border which border wb
+            set line style of b to %s
+            if wTxt contains "thick" or wTxt contains "medium" then
+              set weight of b to border weight %s
+            else
+              set weight of b to border weight %s
+            end if
+          end repeat
+        end tell
+        return "ok"
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+    end tell
+  ]], line_style, weight_heavy, weight_light))
+
+  if ok and result == "none" then return end
+
+  local failed = (not ok)
+    or (type(result) == "string" and result:sub(1, 6) == "ERROR ")
+  if failed then
+    local detail
+    if type(result) == "string" and result:sub(1, 6) == "ERROR " then
+      detail = result
+    elseif type(descriptor) == "table" and hs.inspect then
+      detail = hs.inspect(descriptor)
+    else
+      detail = string.format("engine error ok=%s result=%s",
+        tostring(ok), tostring(result))
+    end
+    if _G.__mme_log then
+      _G.__mme_log("border_dotted: %s", detail)
+    end
+    hs.alert.show("Border dotted failed (see log)", 1.5)
+    return
+  end
+
+  -- Same cell-selector freeze as paste / insert sheet: Excel parks
+  -- focus on an overlay after AppleScript border changes until Escape.
+  M.dismiss_menu_focus()
+end
+
 ----------------------------------------------------------------------
 -- Fill actions
 ----------------------------------------------------------------------

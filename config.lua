@@ -108,6 +108,19 @@ return {
   -- prefer the heaviest single line.
   border_weight_thick = "medium",
 
+  -- Border Dashed shortcut (Alt,B,O by default). Reapplies whichever
+  -- outer edges the selection already has as dashed lines. The previous
+  -- per-edge weight is read from the first selected cell: lighter
+  -- borders (hairline / thin) get border_dotted_weight_light; heavier
+  -- borders (medium / thick) get border_dotted_weight_heavy.
+  --
+  -- Defaults match Format Cells > Border > Line Style: fine dashed
+  -- (left column, third row) for light, medium dashed (right column,
+  -- fourth row) for heavy, on the builds we've tested.
+  border_dotted_line_style = "dash",
+  border_dotted_weight_light = "thin",
+  border_dotted_weight_heavy = "medium",
+
   -- When true, show small on-screen alerts as you type a sequence and
   -- log every action to the Hammerspoon console. Helpful while we
   -- iterate; turn off once shortcuts feel stable.
