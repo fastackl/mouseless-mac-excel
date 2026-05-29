@@ -97,7 +97,7 @@ return {
   fill_color_cycle = { "BFF7FA", "D9D9D9", "none" },
 
   -- Custom number formats that the Cycle Number Format shortcut
-  -- (Ctrl+Shift+F by default) walks through, in order. Each entry is
+  -- (Ctrl+Shift+N by default) walks through, in order. Each entry is
   -- an Excel format code string, or the literal "none" / "general" to
   -- clear the format (applies "General"). Pressing advances from the
   -- current format to the next entry, wrapping at the end. If the

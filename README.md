@@ -168,7 +168,7 @@ remove a shortcut.
 | `Ctrl+Shift+A` | `font_size_up` | Step font size up through `config.font_size_cycle` (clamps at the top) |
 | `Ctrl+Shift+S` | `font_size_down` | Step font size down through `config.font_size_cycle` (clamps at the bottom) |
 | `Ctrl+Shift+V` | `cycle_fill_color` | Cycle fill color through `config.fill_color_cycle` |
-| `Ctrl+Shift+F` | `cycle_number_format` | Cycle number format through `config.number_format_cycle` |
+| `Ctrl+Shift+N` | `cycle_number_format` | Cycle number format through `config.number_format_cycle` |
 | `Ctrl+Shift+I` | `zoom_in` | Zoom in by `config.zoom_step` (clamped to `zoom_max`) |
 | `Ctrl+Shift+J` | `zoom_out` | Zoom out by `config.zoom_step` (clamped to `zoom_min`) |
 | `Ctrl+Shift+Space` | `select_column` | Select the entire column(s) covered by the current selection |
@@ -590,7 +590,7 @@ tail -f /tmp/mouseless-mac-excel.log
 | `font_color_cycle` | Ordered list of 6-character hex strings the `cycle_font_color` action walks through. Edit to taste — order is significant. Leading `#` tolerated, case-insensitive. |
 | `font_size_cycle` | Font-size ladder (points) the `font_size_up` / `font_size_down` actions step through. Sorted ascending internally; order in the file doesn't matter. Each press moves to the next rung in the chosen direction and clamps at the ends. |
 | `fill_color_cycle` | Ordered list of fill entries the `cycle_fill_color` action walks through. Each entry is either a 6-character hex string (leading `#` tolerated, case-insensitive) or the literal `"none"` to clear fill. |
-| `number_format_cycle` | Excel format code strings the `cycle_number_format` action walks through (`Ctrl+Shift+F` by default). Use `"none"` or `"general"` for the built-in General format. Order is significant. |
+| `number_format_cycle` | Excel format code strings the `cycle_number_format` action walks through (`Ctrl+Shift+N` by default). Use `"none"` or `"general"` for the built-in General format. Order is significant. |
 | `border_placement_cycle` | Border placements the `cycle_border_thin` / `cycle_border_thick` actions walk through: `"top"`, `"left"`, `"right"`, `"outline"`. Order is significant. |
 | `border_weight_normal` / `border_weight_thick` | Excel AppleScript border-weight names for the thin (`Ctrl+Shift+B`) and thick (`Ctrl+Shift+T`) shortcuts. Defaults: `thin` / `medium`. |
 | `border_dotted_line_style` | Line style for `border_dotted` (`Alt,B,O`). Default `dash`. |
