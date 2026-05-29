@@ -787,6 +787,166 @@ function M.font_size_up()   M.step_font_size( 1) end
 function M.font_size_down() M.step_font_size(-1) end
 
 ----------------------------------------------------------------------
+-- Border actions
+----------------------------------------------------------------------
+
+-- Cycle outer borders on the selection through config.border_placement_cycle.
+-- `weight` is an Excel AppleScript border-weight name (e.g. "thin",
+-- "medium") taken from config.border_weight_normal / border_weight_thick.
+--
+-- Each press clears all four outer edges, then draws only the next
+-- placement in the cycle (top only, left only, right only, or full
+-- outline). Placement detection reads the first selected cell; if the
+-- pattern is not recognised, the first cycle entry is applied.
+function M.cycle_border(weight)
+  local placements = config.border_placement_cycle or {}
+  local valid = { top = true, left = true, right = true, outline = true }
+  local cycle_norm = {}
+  for _, p in ipairs(placements) do
+    local s = tostring(p):lower()
+    if valid[s] then
+      cycle_norm[#cycle_norm + 1] = s
+    elseif _G.__mme_log then
+      _G.__mme_log("cycle_border: ignoring invalid placement %q", tostring(p))
+    end
+  end
+  if #cycle_norm == 0 then
+    if _G.__mme_log then
+      _G.__mme_log("cycle_border: config.border_placement_cycle is empty")
+    end
+    return
+  end
+
+  local weight_as = tostring(weight or config.border_weight_normal or "thin"):lower()
+  local allowed_weight = { hairline = true, thin = true, medium = true, thick = true }
+  if not allowed_weight[weight_as] then
+    if _G.__mme_log then
+      _G.__mme_log("cycle_border: invalid weight %q, using thin", tostring(weight))
+    end
+    weight_as = "thin"
+  end
+
+  local function classify(top, left, right, bottom)
+    if top and not left and not right and not bottom then return "top" end
+    if left and not top and not right and not bottom then return "left" end
+    if right and not top and not left and not bottom then return "right" end
+    if top and left and right and bottom then return "outline" end
+    return nil
+  end
+
+  local ok_read, result = hs.osascript.applescript([[
+    tell application "Microsoft Excel"
+      try
+        tell cell 1 of selection
+          set t to false
+          set l to false
+          set r to false
+          set b to false
+          set bTop to get border which border edge top
+          if line style of bTop is not line style none then set t to true
+          set bLeft to get border which border edge left
+          if line style of bLeft is not line style none then set l to true
+          set bRight to get border which border edge right
+          if line style of bRight is not line style none then set r to true
+          set bBot to get border which border edge bottom
+          if line style of bBot is not line style none then set b to true
+          return (t as text) & "," & (l as text) & "," & (r as text) & "," & (b as text)
+        end tell
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+    end tell
+  ]])
+
+  local current_placement
+  if ok_read and type(result) == "string" and not result:find("^ERROR ") then
+    local ts, ls, rs, bs = result:match("^(%w+),(%w+),(%w+),(%w+)$")
+    if ts then
+      local function as_bool(s) return s == "true" end
+      current_placement = classify(as_bool(ts), as_bool(ls), as_bool(rs), as_bool(bs))
+    end
+  end
+
+  local next_placement = cycle_norm[1]
+  if current_placement then
+    for i, p in ipairs(cycle_norm) do
+      if p == current_placement then
+        next_placement = cycle_norm[(i % #cycle_norm) + 1]
+        break
+      end
+    end
+  end
+
+  -- Excel Mac: borders are accessed with `get border which border edge top`
+  -- inside a `tell <range>` block — not `border index edge top of range`.
+  local apply_block
+  if next_placement == "outline" then
+    apply_block = string.format(
+      "border around it line style continuous weight border weight %s",
+      weight_as)
+  else
+    local edge_sym = ({
+      top = "edge top",
+      left = "edge left",
+      right = "edge right",
+    })[next_placement]
+    if not edge_sym then
+      if _G.__mme_log then
+        _G.__mme_log("cycle_border: unknown placement %q", tostring(next_placement))
+      end
+      return
+    end
+    apply_block = string.format([[
+          set b to get border which border %s
+          set line style of b to continuous
+          set weight of b to border weight %s]], edge_sym, weight_as)
+  end
+
+  local ok_set, set_result, descriptor = hs.osascript.applescript(string.format([[
+    tell application "Microsoft Excel"
+      try
+        tell selection
+          repeat with wb in {edge top, edge left, edge right, edge bottom}
+            set b to get border which border wb
+            set line style of b to line style none
+          end repeat
+%s
+        end tell
+        return "ok"
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+    end tell
+  ]], apply_block))
+
+  local failed = (not ok_set)
+    or (type(set_result) == "string" and set_result:sub(1, 6) == "ERROR ")
+  if failed then
+    local detail
+    if type(set_result) == "string" and set_result:sub(1, 6) == "ERROR " then
+      detail = set_result
+    elseif type(descriptor) == "table" and hs.inspect then
+      detail = hs.inspect(descriptor)
+    else
+      detail = string.format("engine error ok=%s result=%s",
+        tostring(ok_set), tostring(set_result))
+    end
+    if _G.__mme_log then
+      _G.__mme_log("cycle_border: %s", detail)
+    end
+    hs.alert.show("Border change failed (see log)", 1.5)
+  end
+end
+
+function M.cycle_border_thin()
+  M.cycle_border(config.border_weight_normal or "thin")
+end
+
+function M.cycle_border_thick()
+  M.cycle_border(config.border_weight_thick or "medium")
+end
+
+----------------------------------------------------------------------
 -- Fill actions
 ----------------------------------------------------------------------
 

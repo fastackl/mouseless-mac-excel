@@ -162,6 +162,8 @@ remove a shortcut.
 | --- | --- | --- |
 | `Cmd+Shift+V` | `paste_values` | Paste Values |
 | `Ctrl+Shift+C` | `cycle_font_color` | Cycle font color through `config.font_color_cycle` |
+| `Ctrl+Shift+B` | `cycle_border_thin` | Cycle border placement (thin) through `config.border_placement_cycle` |
+| `Ctrl+Shift+T` | `cycle_border_thick` | Cycle border placement (thick) through `config.border_placement_cycle` |
 | `Ctrl+Shift+A` | `font_size_up` | Step font size up through `config.font_size_cycle` (clamps at the top) |
 | `Ctrl+Shift+S` | `font_size_down` | Step font size down through `config.font_size_cycle` (clamps at the bottom) |
 | `Ctrl+Shift+V` | `cycle_fill_color` | Cycle fill color through `config.fill_color_cycle` |
@@ -581,6 +583,8 @@ tail -f /tmp/mouseless-mac-excel.log
 | `font_color_cycle` | Ordered list of 6-character hex strings the `cycle_font_color` action walks through. Edit to taste — order is significant. Leading `#` tolerated, case-insensitive. |
 | `font_size_cycle` | Font-size ladder (points) the `font_size_up` / `font_size_down` actions step through. Sorted ascending internally; order in the file doesn't matter. Each press moves to the next rung in the chosen direction and clamps at the ends. |
 | `fill_color_cycle` | Ordered list of fill entries the `cycle_fill_color` action walks through. Each entry is either a 6-character hex string (leading `#` tolerated, case-insensitive) or the literal `"none"` to clear fill. |
+| `border_placement_cycle` | Border placements the `cycle_border_thin` / `cycle_border_thick` actions walk through: `"top"`, `"left"`, `"right"`, `"outline"`. Order is significant. |
+| `border_weight_normal` / `border_weight_thick` | Excel AppleScript border-weight names for the thin (`Ctrl+Shift+B`) and thick (`Ctrl+Shift+T`) shortcuts. Defaults: `thin` / `medium`. |
 | `zoom_min` / `zoom_max` / `zoom_step` | Lower bound, upper bound, and step (all integer percentages) for `zoom_in` / `zoom_out`. Defaults: `50` / `200` / `10`. Snap-to-step: zoom-in from 117% lands on 120%, from 120% lands on 130%. |
 | `debug` | When true, shows on-screen alerts and writes `/tmp/mouseless-mac-excel.log`. |
 

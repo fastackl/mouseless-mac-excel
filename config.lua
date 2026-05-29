@@ -89,6 +89,25 @@ return {
   -- applied instead. Edit freely — order is significant.
   fill_color_cycle = { "BFF7FA", "D9D9D9", "none" },
 
+  -- Border placement cycle for the Cycle Border shortcuts (Ctrl+Shift+B
+  -- and Ctrl+Shift+T by default). Each entry is one of: "top", "left",
+  -- "right", or "outline" (all four outer edges). Each press advances
+  -- to the next entry, wrapping at the end. If the current borders do
+  -- not match any entry, the first entry is applied. Order is
+  -- significant.
+  border_placement_cycle = { "top", "left", "right", "outline" },
+
+  -- Line weight for Ctrl+Shift+B (normal / thin border). Must be an
+  -- Excel AppleScript border-weight constant name: hairline, thin,
+  -- medium, or thick. Maps to Format Cells > Border > Line Style
+  -- "Solid Thin" on the builds we've tested.
+  border_weight_normal = "thin",
+
+  -- Line weight for Ctrl+Shift+T (thick border). Maps to "Solid Medium"
+  -- in the same dialog on the builds we've tested; use "thick" if you
+  -- prefer the heaviest single line.
+  border_weight_thick = "medium",
+
   -- When true, show small on-screen alerts as you type a sequence and
   -- log every action to the Hammerspoon console. Helpful while we
   -- iterate; turn off once shortcuts feel stable.
