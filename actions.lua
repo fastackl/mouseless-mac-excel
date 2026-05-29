@@ -1544,6 +1544,107 @@ function M.cycle_number_format()
   end
 end
 
+-- Cycle the horizontal alignment of the current selection through
+-- config.alignment_cycle.
+--
+-- Semantics mirror cycle_number_format: read the first cell's
+-- alignment, advance to the next entry (wrapping), apply to the whole
+-- selection. Recognised tokens are normalised in `tokens` below; only
+-- the canonical AppleScript enum names we control are ever spliced into
+-- the script, so config values can't inject AppleScript.
+--
+-- Excel for Mac silently refuses horizontal-alignment writes while a
+-- modal dialog (e.g. Format Cells) is open, returning a -10006 that
+-- reads like a parse error ("Can't set selection to ..."). If a press
+-- seems to do nothing, check for an open dialog before suspecting this
+-- code.
+function M.cycle_alignment()
+  -- token -> { apply = <enum to write>, read = <enum as text on read> }
+  local tokens = {
+    left   = { apply = "horizontal align left",   read = "horizontal align left" },
+    right  = { apply = "horizontal align right",  read = "horizontal align right" },
+    center = { apply = "horizontal align center", read = "horizontal align center" },
+    ["center across selection"] = {
+      apply = "horizontal align center across selection",
+      read  = "horizontal align center across selection",
+    },
+    none = { apply = "horizontal align general", read = "horizontal align general" },
+  }
+
+  local function canon(s)
+    s = tostring(s):lower():gsub("^%s+", ""):gsub("%s+$", "")
+    if s == "centre" then s = "center" end
+    if s == "general" then s = "none" end
+    return s
+  end
+
+  local cycle_norm = {}
+  for _, entry in ipairs(config.alignment_cycle or {}) do
+    local key = canon(entry)
+    if tokens[key] then
+      cycle_norm[#cycle_norm + 1] = key
+    elseif _G.__mme_log then
+      _G.__mme_log("cycle_alignment: ignoring unknown entry %q", tostring(entry))
+    end
+  end
+  if #cycle_norm == 0 then
+    if _G.__mme_log then
+      _G.__mme_log("cycle_alignment: no valid entries in config.alignment_cycle")
+    end
+    return
+  end
+
+  local ok_read, result = hs.osascript.applescript([[
+    tell application "Microsoft Excel"
+      try
+        return horizontal alignment of (cell 1 of selection) as text
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+    end tell
+  ]])
+
+  local current_key
+  if ok_read and type(result) == "string" and not result:find("^ERROR ") then
+    for key, info in pairs(tokens) do
+      if info.read == result then
+        current_key = key
+        break
+      end
+    end
+  end
+
+  local next_key = cycle_norm[1]
+  if current_key then
+    for i, key in ipairs(cycle_norm) do
+      if key == current_key then
+        next_key = cycle_norm[(i % #cycle_norm) + 1]
+        break
+      end
+    end
+  end
+
+  local ok, apply_result = M.applescript(string.format([[
+    tell application "Microsoft Excel"
+      try
+        set horizontal alignment of selection to %s
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+    end tell
+  ]], tokens[next_key].apply))
+
+  if ok and type(apply_result) == "string" and apply_result:find("^ERROR ") then
+    if _G.__mme_log then
+      _G.__mme_log("cycle_alignment: %s", apply_result)
+    end
+    hs.alert.show("Alignment failed (see log)", 1.2)
+    return
+  end
+
+  hs.alert.show("Align: " .. next_key, 0.7)
+end
+
 -- Increase / decrease the decimal places shown by the selection while
 -- preserving the rest of its number format. Mirrors Excel's
 -- Increase/Decrease Decimal toolbar buttons (Ctrl+Shift+, and

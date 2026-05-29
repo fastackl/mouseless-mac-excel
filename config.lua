@@ -112,6 +112,27 @@ return {
     "none",
   },
 
+  -- Horizontal alignment states the Cycle Alignment shortcut
+  -- (Ctrl+Shift+M by default) walks through, in order. Recognised
+  -- tokens (case-insensitive): "left", "right", "center" (or "centre"),
+  -- "center across selection", and "none" (or "general", Excel's
+  -- default). Pressing the shortcut reads the first selected cell's
+  -- alignment and applies the next entry, wrapping at the end. If the
+  -- current alignment isn't in the list, the first entry is applied.
+  -- Edit freely — order is significant; unknown tokens are ignored.
+  --
+  -- Note: Excel for Mac silently refuses every horizontal-alignment
+  -- write while a modal dialog (e.g. Format Cells) is open, surfacing
+  -- a -10006 that masquerades as a parse error. Close the dialog and
+  -- the cycle works; there is nothing to tune for it here.
+  alignment_cycle = {
+    "left",
+    "right",
+    "center",
+    "center across selection",
+    "none",
+  },
+
   -- Border placement cycle for the Cycle Border shortcuts (Ctrl+Shift+B
   -- and Ctrl+Shift+T by default). Each entry is one of: "top", "left",
   -- "right", or "outline" (all four outer edges). Each press advances
