@@ -99,6 +99,106 @@ Prefer Excel's AppleScript dictionary, then menu navigation, then
 keystrokes. **Avoid clicking UI controls by screen coordinates;
 that's not portable across machines or window sizes.**
 
+## Iterate fast with command-line AppleScript (do this before asking the user to test)
+
+When an action will use Excel AppleScript, **probe the exact calls
+from the terminal with `osascript` while Excel is running** —
+don't wait for the user to reload Hammerspoon and report back for
+every syntax guess. This cut iteration time dramatically on
+borders, font size, fill colour, and sheet insert.
+
+**You (the agent) should run these commands yourself** in the
+user's environment (Shell tool, full permissions so Excel
+Automation works). Microsoft Excel must be open with a normal
+workbook; select a single cell or small range before write tests.
+
+### 1. Look up the dictionary (exact enum / command names)
+
+Excel's AppleScript names rarely match VBA or the UI labels.
+Search the app dictionary:
+
+```bash
+sdef "/Applications/Microsoft Excel.app" 2>/dev/null | grep -iE "border|line style|font size|get border"
+```
+
+Use the real names you find (e.g. `get border which border edge top`,
+`continuous`, `dash`, `border weight medium`) — not guessed forms
+like `border index edge top of selection`, which often compile in
+your head but fail at runtime.
+
+### 2. Run one-shot probes with `osascript`
+
+Single line:
+
+```bash
+osascript -e 'tell application "Microsoft Excel" to tell selection to get border which border edge top'
+```
+
+Multi-line (easier for `try / on error`):
+
+```bash
+osascript <<'EOF'
+tell application "Microsoft Excel"
+  activate
+  try
+    tell selection
+      set b to get border which border edge top
+      set line style of b to dash
+      set weight of b to border weight medium
+    end tell
+    return "ok"
+  on error errMsg number errNum
+    return "ERROR " & errNum & ": " & errMsg
+  end try
+end tell
+EOF
+```
+
+**Always use the same `try / on error` return pattern as production**
+(see §2) in probes so failures are readable (`ERROR -10006: …`)
+instead of opaque Hammerspoon descriptor tables.
+
+### 3. Test inside the right `tell` block
+
+Many Excel calls only work in context — discovered empirically:
+
+| Operation | Works | Often fails |
+| --- | --- | --- |
+| Borders read/write | `tell selection` … `get border which border edge top` | `border index edge top of selection` |
+| Font size write | `tell font object of selection` … `set font size to 12` | `set font size of selection to 12` |
+| Font colour | `set color of font object of selection to {…}` | (varies) |
+| Outline border | `border around it line style dash weight border weight medium` inside `tell selection` | Same call with wrong line-style token |
+
+Read from `cell 1 of selection` when you need one cell's state;
+apply to `selection` when the action affects the whole range.
+
+### 4. Iterate read → write → read
+
+1. **Read** the property you care about (e.g. current border edges,
+   font size as text).
+2. **Write** the smallest change that should be visible.
+3. **Read again** (or return `"ok"` from the probe) to confirm.
+
+If write fails with `-10006`, try an alternate shape from the
+dictionary (e.g. nested `tell font object`) before trying keystrokes
+or UI automation.
+
+### 5. Only then wire into `actions.lua`
+
+Once a probe returns `"ok"` and the user-visible effect is right
+in Excel, paste the working AppleScript into `M.applescript` /
+`hs.osascript.applescript`, with the same `tell` structure.
+
+Reload Hammerspoon is still required for the **shortcut binding** —
+but by then you should already know the script works.
+
+### 6. User does final shortcut smoke test
+
+After you integrate, tell the user to reload Hammerspoon once and
+try the trigger. They catch focus quirks, timing, and machine-
+specific UI — not basic "AppleScript doesn't compile" issues you
+could have eliminated with `osascript`.
+
 ## Mac Excel quirks — read these, they will bite you
 
 ### §1. Dialog focus is a lie
@@ -143,7 +243,9 @@ Then in Lua, check whether `result` starts with `"ERROR "` and log
 accordingly. For multi-step scripts where you don't know which
 call will fail, wrap each step in its own `try / on error` block
 with a labelled message (`"ERROR step2 (make new worksheet) ..."`).
-`M.insert_sheet` is the reference implementation.
+`M.insert_sheet` uses the in-script `try / on error` pattern
+(simplified to a single `make new worksheet` call — see its
+comment for Mac insert-before-active behaviour).
 
 ### §3. AppleScript can lie about its own outputs
 
@@ -201,17 +303,22 @@ the AX tree.
 
 2. **Pick the implementation approach** from the decision table.
 
-3. **Implement minimally.** Write the action in `actions.lua`,
+3. **If using Excel AppleScript, probe with `osascript` first** (see
+   "Iterate fast with command-line AppleScript" above). Do not
+   skip this and rely on the user as your compile loop.
+
+4. **Implement minimally.** Write the action in `actions.lua`,
    declare the trigger in `shortcuts.lua`, add any config in
    `config.lua` with a doc-comment explaining what tuning it.
 
-4. **Tell the user how to test.** They'll restart Hammerspoon
+5. **Tell the user how to test.** They'll restart Hammerspoon
    themselves (menu bar → Reload Config — don't try to do this for
-   them). They will run the shortcut on their machine and report
-   back. Excel UI behaviour varies across machines and versions;
-   testing on their actual setup is the only ground truth.
+   them). One reload smoke test of the bound shortcut is enough if
+   you already validated the AppleScript via `osascript`. They
+   still catch focus overlays, timing, and version quirks Hammerspoon
+   adds on top.
 
-5. **Iterate with diagnostics, not guesses.** When something
+6. **Iterate with diagnostics, not guesses.** When something
    doesn't work, instrument before changing logic:
    - `_G.__mme_log("label %s", value)` writes to
      `/tmp/mouseless-mac-excel.log` (tail it from the user's
@@ -222,7 +329,7 @@ the AX tree.
      that walks the tree and writes findings to a file in
      `/tmp/` is fair game.
 
-6. **Clean up before committing.**
+7. **Clean up before committing.**
    - Remove probe actions and probe shortcuts.
    - Strip diagnostic logs added for debugging.
    - Keep production-useful diagnostics (e.g. per-step
@@ -232,11 +339,11 @@ the AX tree.
      line-by-line; explain non-obvious intent, trade-offs, and
      Mac/Excel quirks.
 
-7. **Update the README** — at minimum the relevant "Currently
+8. **Update the README** — at minimum the relevant "Currently
    installed shortcuts" table; also the "Tuning" table if you
    added config.
 
-8. **Commit, don't push.** One-line commit message, sentence case,
+9. **Commit, don't push.** One-line commit message, sentence case,
    no trailing period, action-first. Match the existing style:
    - `Add Insert Sheet shortcut (Alt, O, W, S)`
    - `Add Cycle Font Color shortcut (Ctrl+Shift+C)`
