@@ -152,7 +152,7 @@ remove a shortcut.
 | `o c w` | `column_width_dialog` | Format > Column > Width… (opens dialog) |
 | `o r e` | `row_height_dialog` | Format > Row > Height… (opens dialog) |
 | `o h r` | `rename_sheet` | Format > Sheet > Rename (inline edit on the sheet tab) |
-| `o h m` | `move_sheet_dialog` | Edit > Sheet > Move or Copy… (focuses Before sheet list, first row) |
+| `o h m` | `move_sheet_dialog` | Edit > Sheet > Move or Copy… (Before sheet list focused; **Alt+C** toggles Create a copy while open) |
 | `o w s` | `insert_sheet` | Insert a new worksheet before the active sheet (Mac Excel default) |
 | `e l` | `delete_sheet` | Delete the active worksheet (Excel shows its native confirmation dialog first) |
 | `b o` | `border_dotted` | Reapply current outer borders as dash; light vs heavy weight picks the dashed preset |
@@ -581,6 +581,9 @@ tail -f /tmp/mouseless-mac-excel.log
 | `step_delay_seconds` | Delay between scripted keystrokes inside multi-step `M.sequence()` actions. Bump if Excel dialogs feel slow. |
 | `dialog_focus_click` | When `true` (default), dialog-opening actions synthesise a mouse click on the control you need next: text fields get select-all for overtype; Move or Copy gets the Before sheet list on the first row for arrow keys. The cursor briefly flickers to the target and back. Turn off to keep the cursor undisturbed and focus dialogs manually. See the [focus-routing note](#focus-routing-artefact). |
 | `dialog_focus_click_delay_seconds` | Delay (seconds) between opening a dialog and looking it up in the AX tree to click. Default `0.08`. Bump if the log shows `focus_and_select: dialog "..." not found`. |
+| `move_sheet_copy_toggle_enabled` | When `true` (default), **Alt+C** toggles "Create a copy" while the Move or Copy dialog is open after `o h m`. Set `false` to disable. |
+| `move_sheet_copy_toggle_mods` / `move_sheet_copy_toggle_key` | Modifier list and key for the in-dialog toggle (default Alt+C). |
+| `move_sheet_copy_watch_interval_seconds` | How often to poll for dialog close while the toggle hotkey is armed (default `0.25`). |
 | `font_color_cycle` | Ordered list of 6-character hex strings the `cycle_font_color` action walks through. Edit to taste — order is significant. Leading `#` tolerated, case-insensitive. |
 | `font_size_cycle` | Font-size ladder (points) the `font_size_up` / `font_size_down` actions step through. Sorted ascending internally; order in the file doesn't matter. Each press moves to the next rung in the chosen direction and clamps at the ends. |
 | `fill_color_cycle` | Ordered list of fill entries the `cycle_fill_color` action walks through. Each entry is either a 6-character hex string (leading `#` tolerated, case-insensitive) or the literal `"none"` to clear fill. |

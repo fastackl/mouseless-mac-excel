@@ -40,6 +40,14 @@ return {
   -- (the dialog hadn't rendered yet when we went looking).
   dialog_focus_click_delay_seconds = 0.08,
 
+  -- After Alt,O,H,M opens Move or Copy, this combo toggles "Create a
+  -- copy" while that dialog is visible. The binding disarms when the
+  -- dialog closes or Excel is no longer frontmost.
+  move_sheet_copy_toggle_enabled = true,
+  move_sheet_copy_toggle_mods = { "alt" },
+  move_sheet_copy_toggle_key = "c",
+  move_sheet_copy_watch_interval_seconds = 0.25,
+
   -- Bounds and step for the Zoom In / Zoom Out shortcuts (Ctrl+Shift+I
   -- and Ctrl+Shift+J by default). Each press reads Excel's current
   -- active-window zoom and lands on the next grid line of zoom_step

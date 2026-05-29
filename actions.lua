@@ -500,6 +500,167 @@ function M.rename_sheet()
   M.dismiss_menu_focus()
 end
 
+----------------------------------------------------------------------
+-- Move or Copy dialog: ephemeral Alt+C toggles "Create a copy"
+----------------------------------------------------------------------
+
+local MOVE_OR_COPY_DIALOG_TITLE = "Move or Copy"
+local move_sheet_copy_hotkey = nil
+local move_sheet_copy_watch_timer = nil
+
+local function disarm_move_sheet_copy_hotkey()
+  if move_sheet_copy_hotkey then
+    move_sheet_copy_hotkey:delete()
+    move_sheet_copy_hotkey = nil
+  end
+  if move_sheet_copy_watch_timer then
+    move_sheet_copy_watch_timer:stop()
+    move_sheet_copy_watch_timer = nil
+  end
+end
+
+local function move_sheet_ax_attr(elem, name)
+  local got, val = pcall(function() return elem[name] end)
+  return got and val or nil
+end
+
+local function move_sheet_excel_app_ax()
+  local ax = hs.axuielement
+  if not ax then
+    local ok_req, mod = pcall(require, "hs.axuielement")
+    if ok_req then ax = mod end
+  end
+  if not ax then return nil end
+  local app = hs.application.find(config.excel_bundle_id)
+  if not app then return nil end
+  return ax.applicationElement(app)
+end
+
+local function find_move_or_copy_dialog()
+  local app_ax = move_sheet_excel_app_ax()
+  if not app_ax then return nil end
+  for _, w in ipairs(move_sheet_ax_attr(app_ax, "AXWindows") or {}) do
+    if move_sheet_ax_attr(w, "AXTitle") == MOVE_OR_COPY_DIALOG_TITLE then
+      return w
+    end
+  end
+  return nil
+end
+
+local function find_create_copy_checkbox(dialog)
+  local function matches_checkbox_label(elem)
+    local role = move_sheet_ax_attr(elem, "AXRole")
+    if role ~= "AXCheckBox" then return false end
+    local title = tostring(
+      move_sheet_ax_attr(elem, "AXTitle")
+        or move_sheet_ax_attr(elem, "AXDescription")
+        or "")
+    return title:lower():find("create a copy", 1, true) ~= nil
+  end
+
+  local function walk(elem)
+    if matches_checkbox_label(elem) then return elem end
+    for _, child in ipairs(move_sheet_ax_attr(elem, "AXChildren") or {}) do
+      local found = walk(child)
+      if found then return found end
+    end
+    return nil
+  end
+  return walk(dialog)
+end
+
+local function checkbox_is_on(cb)
+  local val = move_sheet_ax_attr(cb, "AXValue")
+  return val == 1 or val == true or val == "1"
+end
+
+local function click_ax_center(elem)
+  local frame = move_sheet_ax_attr(elem, "AXFrame")
+  if not frame then
+    local pos  = move_sheet_ax_attr(elem, "AXPosition")
+    local size = move_sheet_ax_attr(elem, "AXSize")
+    if pos and size then
+      frame = { x = pos.x, y = pos.y, w = size.w, h = size.h }
+    end
+  end
+  if not frame then return false end
+  local fw = frame.w or frame.width or 0
+  local fh = frame.h or frame.height or 0
+  local click_point = { x = frame.x + fw / 2, y = frame.y + fh / 2 }
+  local original_mouse = hs.mouse.absolutePosition()
+  hs.eventtap.leftClick(click_point)
+  hs.mouse.absolutePosition(original_mouse)
+  return true
+end
+
+local function toggle_move_sheet_create_copy()
+  local dialog = find_move_or_copy_dialog()
+  if not dialog then return nil end
+
+  local checkbox = find_create_copy_checkbox(dialog)
+  if not checkbox then
+    if _G.__mme_log then
+      _G.__mme_log("toggle_create_copy: checkbox not found")
+    end
+    hs.alert.show("Create a copy checkbox not found", 1.2)
+    return nil
+  end
+
+  local was_on = checkbox_is_on(checkbox)
+  local set_ok = pcall(function()
+    checkbox:setAttributeValue("AXValue", was_on and 0 or 1)
+  end)
+
+  local now_on = checkbox_is_on(checkbox)
+  if set_ok and now_on ~= was_on then
+    return now_on and "Create a copy: on" or "Create a copy: off"
+  end
+
+  if not click_ax_center(checkbox) then
+    if _G.__mme_log then
+      _G.__mme_log("toggle_create_copy: could not click checkbox")
+    end
+    hs.alert.show("Could not toggle Create a copy", 1.2)
+    return nil
+  end
+
+  now_on = checkbox_is_on(checkbox)
+  return now_on and "Create a copy: on" or "Create a copy: off"
+end
+
+local function arm_move_sheet_copy_hotkey()
+  if not config.move_sheet_copy_toggle_enabled then return end
+
+  disarm_move_sheet_copy_hotkey()
+
+  local mods = config.move_sheet_copy_toggle_mods or { "alt" }
+  local key  = config.move_sheet_copy_toggle_key or "c"
+
+  move_sheet_copy_hotkey = hs.hotkey.new(mods, key, function()
+    if not find_move_or_copy_dialog() then
+      disarm_move_sheet_copy_hotkey()
+      return
+    end
+    local label = toggle_move_sheet_create_copy()
+    if label then
+      hs.alert.show(label, 0.4)
+    end
+  end)
+  move_sheet_copy_hotkey:enable()
+
+  local interval = config.move_sheet_copy_watch_interval_seconds or 0.25
+  move_sheet_copy_watch_timer = hs.timer.doEvery(interval, function()
+    local front = hs.application.frontmostApplication()
+    if not front or front:bundleID() ~= config.excel_bundle_id then
+      disarm_move_sheet_copy_hotkey()
+      return
+    end
+    if not find_move_or_copy_dialog() then
+      disarm_move_sheet_copy_hotkey()
+    end
+  end)
+end
+
 -- Open Edit > Sheet > Move or Copy Sheet... — Excel's native
 -- "Move or Copy" dialog where the user picks a destination workbook
 -- and target position. No text field to overtype; we nudge focus into
@@ -515,7 +676,12 @@ end
 --
 -- No post-action Escape: this opens a modal dialog that already
 -- holds focus, and an Escape would just close it.
+--
+-- While the dialog stays open, config.move_sheet_copy_toggle_mods +
+-- key (default Alt+C) toggles "Create a copy"; the hotkey disarms when
+-- the dialog closes or Excel loses focus.
 function M.move_sheet_dialog()
+  disarm_move_sheet_copy_hotkey()
   M.applescript([[
     tell application "System Events"
       tell process "Microsoft Excel"
@@ -524,6 +690,7 @@ function M.move_sheet_dialog()
     end tell
   ]])
   M.focus_dialog_list("Move or Copy")
+  arm_move_sheet_copy_hotkey()
 end
 
 -- Insert a new worksheet via Excel's AppleScript dictionary.
