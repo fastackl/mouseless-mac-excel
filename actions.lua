@@ -1544,6 +1544,199 @@ function M.cycle_number_format()
   end
 end
 
+-- Increase / decrease the decimal places shown by the selection while
+-- preserving the rest of its number format. Mirrors Excel's
+-- Increase/Decrease Decimal toolbar buttons (Ctrl+Shift+, and
+-- Ctrl+Shift+. by default).
+--
+-- We read the active cell's format code and rewrite only the decimal
+-- placeholder run, leaving currency symbols, thousands separators,
+-- percent signs, padding codes, and the negative/zero/text sections
+-- untouched. The work is pure string manipulation in Lua (no Excel
+-- "round decimals" command exists in the dictionary), so the helpers
+-- below must skip over literal regions — quoted text, escaped chars,
+-- [color]/[condition] brackets, and _/* width-skip codes — so a "."
+-- or a "0" inside them is never mistaken for a real decimal point or
+-- placeholder.
+
+-- Classify each byte of one format section as a numeric placeholder
+-- ("ph": 0 # ?), the decimal separator ("dot": an active "."), or
+-- something we must not touch. Returns a per-index table of marks.
+local function classify_section(section)
+  local n = #section
+  local marks = {}
+  local i = 1
+  local in_quote = false
+  while i <= n do
+    local c = section:sub(i, i)
+    if in_quote then
+      marks[i] = "lit"
+      if c == '"' then in_quote = false end
+      i = i + 1
+    elseif c == '"' then
+      in_quote = true; marks[i] = "lit"; i = i + 1
+    elseif c == "\\" then
+      -- Backslash escapes the following char as a literal.
+      marks[i] = "lit"
+      if i + 1 <= n then marks[i + 1] = "lit" end
+      i = i + 2
+    elseif c == "_" or c == "*" then
+      -- _x skips the width of x; *x repeats x. The next char is literal.
+      marks[i] = "lit"
+      if i + 1 <= n then marks[i + 1] = "lit" end
+      i = i + 2
+    elseif c == "[" then
+      -- [Red], [>0], [$-409] ... consume through the closing bracket.
+      marks[i] = "lit"; i = i + 1
+      while i <= n and section:sub(i, i) ~= "]" do marks[i] = "lit"; i = i + 1 end
+      if i <= n then marks[i] = "lit"; i = i + 1 end
+    elseif c == "0" or c == "#" or c == "?" then
+      marks[i] = "ph"; i = i + 1
+    elseif c == "." then
+      marks[i] = "dot"; i = i + 1
+    else
+      marks[i] = "other"; i = i + 1
+    end
+  end
+  return marks
+end
+
+-- Split a full format code into its ;-separated sections without
+-- splitting on a ";" that lives inside a literal region.
+local function split_format_sections(fmt)
+  local sections = {}
+  local buf = {}
+  local n = #fmt
+  local i = 1
+  local in_quote = false
+  while i <= n do
+    local c = fmt:sub(i, i)
+    if in_quote then
+      buf[#buf + 1] = c
+      if c == '"' then in_quote = false end
+      i = i + 1
+    elseif c == '"' then
+      in_quote = true; buf[#buf + 1] = c; i = i + 1
+    elseif c == "\\" then
+      buf[#buf + 1] = c
+      if i + 1 <= n then buf[#buf + 1] = fmt:sub(i + 1, i + 1) end
+      i = i + 2
+    elseif c == "[" then
+      buf[#buf + 1] = c; i = i + 1
+      while i <= n and fmt:sub(i, i) ~= "]" do buf[#buf + 1] = fmt:sub(i, i); i = i + 1 end
+      if i <= n then buf[#buf + 1] = fmt:sub(i, i); i = i + 1 end
+    elseif c == ";" then
+      sections[#sections + 1] = table.concat(buf); buf = {}; i = i + 1
+    else
+      buf[#buf + 1] = c; i = i + 1
+    end
+  end
+  sections[#sections + 1] = table.concat(buf)
+  return sections
+end
+
+-- Adjust the decimal placeholders of a single section by one step.
+-- direction > 0 adds a decimal, < 0 removes one. Sections with no
+-- numeric placeholders (e.g. a literal "-" text section) are returned
+-- unchanged so the rest of the format survives intact.
+local function adjust_section_decimals(section, direction)
+  -- General has no placeholders to grow; give it a defined landing spot
+  -- (one decimal up, integer down) matching Excel's Increase/Decrease.
+  if section:gsub("%s", ""):lower() == "general" then
+    return (direction > 0) and "0.0" or "0"
+  end
+
+  local marks = classify_section(section)
+  local n = #section
+
+  local dot_idx
+  for i = 1, n do
+    if marks[i] == "dot" then dot_idx = i; break end
+  end
+
+  if direction > 0 then
+    if dot_idx then
+      local last = dot_idx
+      local j = dot_idx + 1
+      while j <= n and marks[j] == "ph" do last = j; j = j + 1 end
+      return section:sub(1, last) .. "0" .. section:sub(last + 1)
+    end
+    local last_ph
+    for i = 1, n do
+      if marks[i] == "ph" then last_ph = i end
+    end
+    if not last_ph then return section end
+    return section:sub(1, last_ph) .. ".0" .. section:sub(last_ph + 1)
+  end
+
+  -- direction < 0
+  if not dot_idx then return section end
+  local last = dot_idx
+  local j = dot_idx + 1
+  while j <= n and marks[j] == "ph" do last = j; j = j + 1 end
+  if last == dot_idx then
+    -- A bare "." with nothing after it: drop it.
+    return section:sub(1, dot_idx - 1) .. section:sub(dot_idx + 1)
+  end
+  if last - dot_idx <= 1 then
+    -- Last remaining decimal placeholder: drop it and the "." together.
+    return section:sub(1, dot_idx - 1) .. section:sub(last + 1)
+  end
+  return section:sub(1, last - 1) .. section:sub(last + 1)
+end
+
+local function adjust_format_decimals(fmt, direction)
+  local parts = split_format_sections(fmt)
+  for i, sec in ipairs(parts) do
+    parts[i] = adjust_section_decimals(sec, direction)
+  end
+  return table.concat(parts, ";")
+end
+
+function M.step_decimal_places(direction)
+  local ok_read, current = hs.osascript.applescript([[
+    tell application "Microsoft Excel"
+      try
+        return number format of (cell 1 of selection)
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+    end tell
+  ]])
+
+  if not (ok_read and type(current) == "string") or current:find("^ERROR ") then
+    if _G.__mme_log then
+      _G.__mme_log("step_decimal_places: read failed: %s", tostring(current))
+    end
+    hs.alert.show("Decimal places failed (see log)", 1.2)
+    return
+  end
+
+  local new_fmt = adjust_format_decimals(current, direction)
+  if new_fmt == current then return end  -- nothing to change (e.g. no decimals to drop)
+
+  local escaped = new_fmt:gsub("\\", "\\\\"):gsub('"', '\\"')
+  local ok, result = M.applescript([[
+    tell application "Microsoft Excel"
+      try
+        set number format of selection to "]] .. escaped .. [["
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+    end tell
+  ]])
+
+  if ok and type(result) == "string" and result:find("^ERROR ") then
+    if _G.__mme_log then
+      _G.__mme_log("step_decimal_places: %s", result)
+    end
+    hs.alert.show("Decimal places failed (see log)", 1.2)
+  end
+end
+
+function M.decimal_places_up()   M.step_decimal_places( 1) end
+function M.decimal_places_down() M.step_decimal_places(-1) end
+
 ----------------------------------------------------------------------
 -- Selection actions
 ----------------------------------------------------------------------

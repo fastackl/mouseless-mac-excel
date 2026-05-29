@@ -37,6 +37,8 @@ return {
     { mods = { "ctrl", "shift" }, key = "s", action = "font_size_down",   desc = "Font size down" },
     { mods = { "ctrl", "shift" }, key = "v", action = "cycle_fill_color",      desc = "Cycle fill color" },
     { mods = { "ctrl", "shift" }, key = "n", action = "cycle_number_format",   desc = "Cycle number format" },
+    { mods = { "ctrl", "shift" }, key = ",", action = "decimal_places_up",     desc = "Increase decimal places" },
+    { mods = { "ctrl", "shift" }, key = ".", action = "decimal_places_down",   desc = "Decrease decimal places" },
     { mods = { "ctrl", "shift" }, key = "i", action = "zoom_in",          desc = "Zoom in" },
     { mods = { "ctrl", "shift" }, key = "j", action = "zoom_out",         desc = "Zoom out" },
     { mods = { "ctrl" }, key = "space", action = "select_column", desc = "Select current column" },

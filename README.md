@@ -169,6 +169,8 @@ remove a shortcut.
 | `Ctrl+Shift+S` | `font_size_down` | Step font size down through `config.font_size_cycle` (clamps at the bottom) |
 | `Ctrl+Shift+V` | `cycle_fill_color` | Cycle fill color through `config.fill_color_cycle` |
 | `Ctrl+Shift+N` | `cycle_number_format` | Cycle number format through `config.number_format_cycle` |
+| `Ctrl+Shift+,` | `decimal_places_up` | Increase decimal places shown, preserving the rest of the number format |
+| `Ctrl+Shift+.` | `decimal_places_down` | Decrease decimal places shown, preserving the rest of the number format |
 | `Ctrl+Shift+I` | `zoom_in` | Zoom in by `config.zoom_step` (clamped to `zoom_max`) |
 | `Ctrl+Shift+J` | `zoom_out` | Zoom out by `config.zoom_step` (clamped to `zoom_min`) |
 | `Ctrl+Shift+Space` | `select_column` | Select the entire column(s) covered by the current selection |
