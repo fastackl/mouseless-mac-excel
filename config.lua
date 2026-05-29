@@ -96,6 +96,22 @@ return {
   -- applied instead. Edit freely — order is significant.
   fill_color_cycle = { "BFF7FA", "D9D9D9", "none" },
 
+  -- Custom number formats that the Cycle Number Format shortcut
+  -- (Ctrl+Shift+F by default) walks through, in order. Each entry is
+  -- an Excel format code string, or the literal "none" / "general" to
+  -- clear the format (applies "General"). Pressing advances from the
+  -- current format to the next entry, wrapping at the end. If the
+  -- current format isn't in the list (including fresh General cells),
+  -- the first entry is applied instead. Edit freely — order is
+  -- significant.
+  number_format_cycle = {
+    "#,##0_);(#,##0_);#,##0_)",
+    "$#,##0_);($#,##0_);$#,##0_)",
+    '#,##0%_);(#,##0%_);"-"',
+    "#,##0x_);(#,##0x_);#,##0x_)",
+    "none",
+  },
+
   -- Border placement cycle for the Cycle Border shortcuts (Ctrl+Shift+B
   -- and Ctrl+Shift+T by default). Each entry is one of: "top", "left",
   -- "right", or "outline" (all four outer edges). Each press advances

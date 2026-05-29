@@ -1469,6 +1469,81 @@ function M.cycle_fill_color()
   ]], nr, ng, nb))
 end
 
+-- Cycle the number format of the current selection through
+-- config.number_format_cycle.
+--
+-- Semantics mirror cycle_fill_color: read the format of the first cell,
+-- advance to the next entry (wrapping), apply to the whole selection.
+-- Entries "none" or "general" (any case) apply Excel's General format.
+function M.cycle_number_format()
+  local cycle = config.number_format_cycle or {}
+  if #cycle == 0 then
+    if _G.__mme_log then
+      _G.__mme_log("cycle_number_format: config.number_format_cycle is empty")
+    end
+    return
+  end
+
+  local cycle_norm = {}
+  for _, entry in ipairs(cycle) do
+    local s = tostring(entry)
+    if s:lower() == "none" or s:lower() == "general" then
+      cycle_norm[#cycle_norm + 1] = "GENERAL"
+    else
+      cycle_norm[#cycle_norm + 1] = s
+    end
+  end
+
+  local ok_read, result = hs.osascript.applescript([[
+    tell application "Microsoft Excel"
+      try
+        return number format of (cell 1 of selection)
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+    end tell
+  ]])
+
+  local current_key
+  if ok_read and type(result) == "string" and not result:find("^ERROR ") then
+    if result:lower() == "general" then
+      current_key = "GENERAL"
+    else
+      current_key = result
+    end
+  end
+
+  local next_key = cycle_norm[1]
+  if current_key then
+    for i, fmt in ipairs(cycle_norm) do
+      if fmt == current_key then
+        next_key = cycle_norm[(i % #cycle_norm) + 1]
+        break
+      end
+    end
+  end
+
+  -- Bake the format into the script literal (backslash-escape `\` and `"`).
+  local fmt_to_apply = (next_key == "GENERAL") and "General" or next_key
+  local escaped = fmt_to_apply:gsub("\\", "\\\\"):gsub('"', '\\"')
+  local ok, result = M.applescript([[
+    tell application "Microsoft Excel"
+      try
+        set number format of selection to "]] .. escaped .. [["
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+    end tell
+  ]])
+
+  if ok and type(result) == "string" and result:find("^ERROR ") then
+    if _G.__mme_log then
+      _G.__mme_log("cycle_number_format: %s", result)
+    end
+    hs.alert.show("Number format failed (see log)", 1.2)
+  end
+end
+
 ----------------------------------------------------------------------
 -- Selection actions
 ----------------------------------------------------------------------
