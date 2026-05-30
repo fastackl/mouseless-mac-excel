@@ -128,6 +128,16 @@ function M.paste_values()        M.paste_special("paste values")        end
 function M.paste_formats()       M.paste_special("paste formats")       end
 function M.paste_column_widths() M.paste_special("paste column widths") end
 
+-- Edit > Clear > All on the current selection: contents, formats,
+-- comments, and anything else Excel's Clear All covers.
+function M.clear_all()
+  if not M.menu({ "Edit", "Clear", "All" }) then
+    hs.alert.show("Clear All failed (see log)", 1.2)
+    return
+  end
+  M.dismiss_menu_focus()
+end
+
 ----------------------------------------------------------------------
 -- Dialog helpers
 ----------------------------------------------------------------------

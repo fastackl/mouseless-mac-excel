@@ -18,6 +18,7 @@ return {
     { keys = { "e", "s", "v" }, action = "paste_values",        desc = "Paste Special > Values" },
     { keys = { "e", "s", "t" }, action = "paste_formats",       desc = "Paste Special > Formats" },
     { keys = { "e", "s", "w" }, action = "paste_column_widths", desc = "Paste Special > Column Widths" },
+    { keys = { "e", "a", "a" }, action = "clear_all",           desc = "Edit > Clear > All" },
 
     { keys = { "o", "c", "w" }, action = "column_width_dialog", desc = "Format > Column > Width..." },
     { keys = { "o", "r", "e" }, action = "row_height_dialog",   desc = "Format > Row > Height..." },
