@@ -17,6 +17,7 @@ return {
   sequences = {
     { keys = { "e", "s", "v" }, action = "paste_values",        desc = "Paste Special > Values" },
     { keys = { "e", "s", "t" }, action = "paste_formats",       desc = "Paste Special > Formats" },
+    { keys = { "e", "s", "f" }, action = "paste_formulas",      desc = "Paste Special > Formulas" },
     { keys = { "e", "s", "w" }, action = "paste_column_widths", desc = "Paste Special > Column Widths" },
     { keys = { "e", "a", "a" }, action = "clear_all",           desc = "Edit > Clear > All" },
 

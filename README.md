@@ -148,6 +148,7 @@ remove a shortcut.
 | --- | --- | --- |
 | `e s v` | `paste_values` | Paste Special > Values |
 | `e s t` | `paste_formats` | Paste Special > Formats |
+| `e s f` | `paste_formulas` | Paste Special > Formulas |
 | `e s w` | `paste_column_widths` | Paste Special > Column Widths |
 | `e a a` | `clear_all` | Edit > Clear > All (contents, formats, comments, etc.) |
 | `o c w` | `column_width_dialog` | Format > Column > Width… (opens dialog) |

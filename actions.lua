@@ -126,6 +126,7 @@ end
 
 function M.paste_values()        M.paste_special("paste values")        end
 function M.paste_formats()       M.paste_special("paste formats")       end
+function M.paste_formulas()      M.paste_special("paste formulas")      end
 function M.paste_column_widths() M.paste_special("paste column widths") end
 
 -- Edit > Clear > All on the current selection: contents, formats,
