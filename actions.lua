@@ -511,6 +511,23 @@ function M.rename_sheet()
 end
 
 ----------------------------------------------------------------------
+-- Data menu actions
+----------------------------------------------------------------------
+
+-- Open Data > Sort... (Cmd+Shift+R natively). The dialog is driven by
+-- dropdowns rather than a text field, so there's nothing to pre-focus
+-- for overtype — we just open it and let the user navigate.
+function M.sort_dialog()
+  M.applescript([[
+    tell application "System Events"
+      tell process "Microsoft Excel"
+        click menu item "Sort..." of menu 1 of menu bar item "Data" of menu bar 1
+      end tell
+    end tell
+  ]])
+end
+
+----------------------------------------------------------------------
 -- Move or Copy dialog: ephemeral Alt+C toggles "Create a copy"
 ----------------------------------------------------------------------
 

@@ -157,6 +157,7 @@ remove a shortcut.
 | `o w s` | `insert_sheet` | Insert a new worksheet before the active sheet (Mac Excel default) |
 | `e l` | `delete_sheet` | Delete the active worksheet (Excel shows its native confirmation dialog first) |
 | `b o` | `border_dotted` | Reapply current outer borders as dash; light vs heavy weight picks the dashed preset |
+| `d s` | `sort_dialog` | Data > Sort… (opens dialog; same as Cmd+Shift+R) |
 
 **Single combos** — bound while Excel is frontmost:
 

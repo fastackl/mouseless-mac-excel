@@ -27,6 +27,7 @@ return {
     { keys = { "o", "w", "s" }, action = "insert_sheet",        desc = "Insert new sheet (before active, Mac default)" },
     { keys = { "e", "l" },      action = "delete_sheet",        desc = "Delete active sheet (confirms)" },
     { keys = { "b", "o" },      action = "border_dotted",       desc = "Reapply borders as dash (light/heavy by weight)" },
+    { keys = { "d", "s" },      action = "sort_dialog",         desc = "Data > Sort... (opens dialog)" },
   },
 
   combos = {
