@@ -159,6 +159,7 @@ remove a shortcut.
 | `b o` | `border_dotted` | Reapply current outer borders as dash; light vs heavy weight picks the dashed preset |
 | `d s` | `sort_dialog` | Data > Sort… (opens dialog; same as Cmd+Shift+R) |
 | `w n` | `new_window` | Window > New Window — opens a second window onto the active workbook |
+| `w f` | `toggle_freeze_panes` | Window > Freeze Panes (at the active cell) ↔ Unfreeze Panes — toggles each press |
 
 **Single combos** — bound while Excel is frontmost:
 

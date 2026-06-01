@@ -29,6 +29,7 @@ return {
     { keys = { "b", "o" },      action = "border_dotted",       desc = "Reapply borders as dash (light/heavy by weight)" },
     { keys = { "d", "s" },      action = "sort_dialog",         desc = "Data > Sort... (opens dialog)" },
     { keys = { "w", "n" },      action = "new_window",          desc = "Window > New Window (same workbook)" },
+    { keys = { "w", "f" },      action = "toggle_freeze_panes", desc = "Window > Freeze/Unfreeze Panes (at selection)" },
   },
 
   combos = {

@@ -552,6 +552,40 @@ function M.new_window()
   end
 end
 
+-- Toggle Freeze Panes on the active window (Window > Freeze Panes /
+-- Unfreeze Panes). Freezing splits at the active cell — rows above and
+-- columns left of the selection stay pinned — so the single trigger
+-- cycles both ways by reading and flipping the window's freeze panes
+-- property.
+function M.toggle_freeze_panes()
+  local ok, result = M.applescript([[
+    tell application "Microsoft Excel"
+      try
+        set w to active window
+        if (freeze panes of w) then
+          set freeze panes of w to false
+          return "UNFROZEN"
+        else
+          set freeze panes of w to true
+          return "FROZEN"
+        end if
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+    end tell
+  ]])
+  if ok and result == "FROZEN" then
+    hs.alert.show("Froze panes", 0.7)
+  elseif ok and result == "UNFROZEN" then
+    hs.alert.show("Unfroze panes", 0.7)
+  else
+    if _G.__mme_log then
+      _G.__mme_log("toggle_freeze_panes: %s", tostring(result))
+    end
+    hs.alert.show("Freeze panes failed (see log)", 1.2)
+  end
+end
+
 ----------------------------------------------------------------------
 -- Move or Copy dialog: ephemeral Alt+C toggles "Create a copy"
 ----------------------------------------------------------------------
