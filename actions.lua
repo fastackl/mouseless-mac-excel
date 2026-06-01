@@ -528,6 +528,31 @@ function M.sort_dialog()
 end
 
 ----------------------------------------------------------------------
+-- Window menu actions
+----------------------------------------------------------------------
+
+-- Open a second window onto the active workbook (Window > New Window).
+-- Uses the AppleScript dictionary command so it doesn't depend on the
+-- menu label, which varies across locales.
+function M.new_window()
+  local ok, result = M.applescript([[
+    tell application "Microsoft Excel"
+      try
+        new window on workbook (active workbook)
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+    end tell
+  ]])
+  if ok and type(result) == "string" and result:find("^ERROR ") then
+    if _G.__mme_log then
+      _G.__mme_log("new_window: %s", result)
+    end
+    hs.alert.show("New window failed (see log)", 1.2)
+  end
+end
+
+----------------------------------------------------------------------
 -- Move or Copy dialog: ephemeral Alt+C toggles "Create a copy"
 ----------------------------------------------------------------------
 
