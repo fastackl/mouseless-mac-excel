@@ -2019,32 +2019,46 @@ end
 -- Sheet navigation
 ----------------------------------------------------------------------
 
--- Activate the next / previous sheet in the workbook by piggy-
--- backing on Mac Excel's own native shortcut: Opt+Right (next) and
--- Opt+Left (prev). We just synthesise those keystrokes; Excel
--- handles all the workbook lookup, sheet ordering, and clamping at
--- the workbook ends.
+-- Activate the next / previous sheet in the workbook by reading the
+-- active sheet's index, stepping it one in the requested direction,
+-- clamping to [1, sheet count], and activating that worksheet.
 --
--- Why we gave up on AppleScript here:
---   We tried three increasingly-defensive AppleScript variants —
---   `index of active sheet`, then a stored `active workbook`, then
---   `name of every worksheet of active workbook` — and each one
---   ended up coercing a `missing value` into an integer somewhere
---   in the chain. With per-step labelled `try/on error` we
---   narrowed it to the worksheet-name lookup (`name of worksheet i
---   of active workbook` is missing value on at least one i, on
---   this Excel build). Rather than keep guessing which AppleScript
---   subexpression will misfire next, we let Excel's existing
---   keyboard handler do the lookup for us.
+-- History: this used to synthesise Opt+Right / Opt+Left and rely on
+-- Excel's native next/prev-sheet shortcut. That shortcut does nothing
+-- on current Mac builds (the reliable native combo is Ctrl+PageUp/Down),
+-- so the keystroke landed on nothing and the sheet never changed even
+-- though the action fired. The earlier AppleScript attempts were
+-- abandoned because `index of active sheet` and per-sheet name lookups
+-- coerced a `missing value`; that no longer reproduces on the current
+-- build, where reading the index and activating by index round-trips
+-- cleanly. We clamp at the ends ourselves so there's no wrap, matching
+-- the previous intent.
 --
--- Trigger is whatever the user wires up in shortcuts.lua. They've
--- chosen Shift+Opt+Down=next and Shift+Opt+Up=prev. Note the user
--- will be physically holding Shift+Opt when these fire; the
--- synthesised events carry only the Opt flag, so Excel sees clean
--- Opt+Right / Opt+Left. If you ever see Excel responding as if
--- Shift were also down, that's the place to look.
-function M.next_sheet() M.send({ "alt" }, "right") end
-function M.prev_sheet() M.send({ "alt" }, "left")  end
+-- The whole read/clamp/activate runs in one AppleScript so there's no
+-- TOCTOU window, and any failure is caught in-script and surfaced via
+-- M.applescript's error path.
+local function activate_sheet(direction)
+  M.applescript(string.format([[
+    tell application "Microsoft Excel"
+      try
+        set wb to active workbook
+        set n to count of worksheets of wb
+        set i to index of active sheet
+        set target to i + (%d)
+        if target < 1 then set target to 1
+        if target > n then set target to n
+        if target is not i then
+          activate object worksheet target of wb
+        end if
+      on error errMsg number errNum
+        return "ERROR " & errNum & ": " & errMsg
+      end try
+    end tell
+  ]], direction))
+end
+
+function M.next_sheet() activate_sheet(1)  end
+function M.prev_sheet() activate_sheet(-1) end
 
 ----------------------------------------------------------------------
 -- Expand the selected-sheet group (group adjacent worksheets)
