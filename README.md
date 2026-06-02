@@ -379,6 +379,13 @@ This bit us in `M.cycle_font_color`: the first press cycled black
 → blue correctly, but every subsequent press kept the cell on blue
 because the read-back colour never matched any cycle entry.
 
+The same pattern hit `M.cycle_number_format`: writing
+`#,##0_);(#,##0);#,##0_)` can read back as `#,##0_);(#,##0)` when
+Excel drops a redundant trailing section, so a raw string compare never
+finds the current cycle entry and every press snaps to the first
+format. `nf_canonical` applies the same reduction to config and
+read-back before matching.
+
 **Defensive pattern for any action that reads then writes the same
 Excel property:**
 

@@ -1556,12 +1556,72 @@ function M.cycle_fill_color()
   ]], nr, ng, nb))
 end
 
+-- Split a number-format code on its ;-separated sections without
+-- breaking on a ";" that lives inside a quoted or escaped literal.
+local function nf_split_sections(fmt)
+  local sections, buf = {}, {}
+  local in_quote = false
+  local i, n = 1, #fmt
+  while i <= n do
+    local c = fmt:sub(i, i)
+    if in_quote then
+      buf[#buf + 1] = c
+      if c == '"' then in_quote = false end
+    elseif c == '"' then
+      in_quote = true
+      buf[#buf + 1] = c
+    elseif c == "\\" then
+      -- Backslash escapes the next char; keep both so a "\;" literal
+      -- is not mistaken for a section break.
+      buf[#buf + 1] = c
+      if i < n then
+        buf[#buf + 1] = fmt:sub(i + 1, i + 1)
+        i = i + 1
+      end
+    elseif c == ";" then
+      sections[#sections + 1] = table.concat(buf)
+      buf = {}
+    else
+      buf[#buf + 1] = c
+    end
+    i = i + 1
+  end
+  sections[#sections + 1] = table.concat(buf)
+  return sections
+end
+
+-- Canonicalise a number-format code so config entries and Excel's
+-- read-back compare equal.
+--
+-- Excel collapses a 3-section "positive;negative;zero" format to
+-- "positive;negative" on read when the zero section duplicates the
+-- positive one (a very common idiom) -- but not always; the exact rule
+-- is build/format dependent and not worth modelling. We sidestep
+-- guessing it by applying the *same* reduction to both sides: drop any
+-- trailing section identical to the first. Whether Excel actually
+-- dropped the section or not, both the config entry and the read-back
+-- reduce to the same canonical form, so equality matching works.
+local function nf_canonical(fmt)
+  if fmt == "GENERAL" then return "GENERAL" end
+  local secs = nf_split_sections(fmt)
+  while #secs > 1 and secs[#secs] == secs[1] do
+    secs[#secs] = nil
+  end
+  return table.concat(secs, ";")
+end
+
 -- Cycle the number format of the current selection through
 -- config.number_format_cycle.
 --
 -- Semantics mirror cycle_fill_color: read the format of the first cell,
 -- advance to the next entry (wrapping), apply to the whole selection.
 -- Entries "none" or "general" (any case) apply Excel's General format.
+--
+-- Matching is done on the canonical form (see nf_canonical) rather than
+-- raw strings: Excel's AppleScript bridge does not always return a
+-- format verbatim (it may drop a redundant trailing section), so a raw
+-- string compare would never find the current entry and the cycle would
+-- snap back to the first format on every press.
 function M.cycle_number_format()
   local cycle = config.number_format_cycle or {}
   if #cycle == 0 then
@@ -1600,14 +1660,21 @@ function M.cycle_number_format()
     end
   end
 
+  local current_canon = current_key and nf_canonical(current_key) or nil
+
   local next_key = cycle_norm[1]
-  if current_key then
+  if current_canon then
     for i, fmt in ipairs(cycle_norm) do
-      if fmt == current_key then
+      if nf_canonical(fmt) == current_canon then
         next_key = cycle_norm[(i % #cycle_norm) + 1]
         break
       end
     end
+  end
+
+  if _G.__mme_log then
+    _G.__mme_log("cycle_number_format: current=%q canon=%q -> next=%q",
+      tostring(current_key), tostring(current_canon), tostring(next_key))
   end
 
   -- Bake the format into the script literal (backslash-escape `\` and `"`).
