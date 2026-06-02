@@ -105,9 +105,9 @@ return {
   -- the first entry is applied instead. Edit freely — order is
   -- significant.
   number_format_cycle = {
-    "#,##0_);(#,##0);#,##0_)",
+    '#,##0_);(#,##0);"-"_)',
     "$#,##0_);($#,##0);$#,##0_)",
-    '#,##0%_);(#,##0%);"-"',
+    '#,##0%_);(#,##0%);#,##0%_)',
     "#,##0x_);(#,##0x);#,##0x_)",
     "none",
   },
